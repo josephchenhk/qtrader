@@ -24,7 +24,7 @@ setup(
     include_package_data=True,
     entry_points={
         'console_scripts':[
-            'example=example.test:main'
+            'example=tests.test_event:run'
         ]
     },
 )
