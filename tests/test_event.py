@@ -18,7 +18,7 @@ from qtrader.gateway.bondsim import BondsimGateway
 strategy_path = PATH["strategy_path"]
 sys.path.append(strategy_path)
 
-if __name__=="__main__":
+def run():
     event_engine = EventEngine()
     main_engine = MainEngine(event_engine)
     main_engine.add_gateway(BondsimGateway)
@@ -29,3 +29,6 @@ if __name__=="__main__":
         script_engine.connect_gateway(setting=setting, gateway_name="BONDSIM")
         script_engine.write_log("连接BONDSIM接口")
         script_engine.start_strategy(script_path="bond_strategy.py")
+
+if __name__=="__main__":
+    run()
