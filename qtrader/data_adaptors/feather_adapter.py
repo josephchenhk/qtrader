@@ -9,11 +9,12 @@
 import os
 from pyarrow.feather import read_feather
 import pandas as pd
+from pathlib import Path
 from datetime import datetime
 from quantkits.time.conversion import from_timestamp_to_datetime
 from quantkits.logger import logger
 
-from engine.data_adapters.base_adapter import BaseDataHandler
+from qtrader.data_adaptors.base_adapter import BaseDataHandler
 
 class FeatherDataHandler(BaseDataHandler):
     """A reader that handles data in Apache feather format
@@ -28,45 +29,51 @@ class FeatherDataHandler(BaseDataHandler):
         start = int(start.strftime("%Y%m%d"))
         end = int(end.strftime("%Y%m%d"))
         assert end>start, "End date {} must be larger than start date {}".format(end, start)
+        #print(source, ticker)
         data_path = os.path.join(source, ticker)
-        data_files = [f for f in os.listdir(data_path) if os.path.isfile(os.path.join(data_path, f))]
-        data_files = sorted(data_files)
-        data_dates = []
-        # Note: each feather file includes two trading days' data: for example, 20200619.feather file contains data
-        # in 2020-06-18 and 2020-06-19. Therefore we need to include the feather file in next trading day after `end`
-        # Theoretically we don't need to include feather file in the previous trading day before `start`, but in order
-        # to avoid data-not-available errors when we assign a particular beginning timestamp such that there is no
-        # snapshot data in that day, we also include the previous trading day data here.
-        start_idx = None
-        end_idx = None
-        for idx, data_file in enumerate(data_files):
-            data_date = int(data_file.replace(".feather", ""))
-            if data_date<start:
-                start_idx = idx
-                continue
-            elif data_date>=start and data_date<=end:
-                data_dates.append(data_date)
-            elif data_date>end:
-                end_idx = idx
-                break
-        if start_idx is not None:
-            start_idx_date = int(data_files[start_idx].replace(".feather", ""))
-            if start_idx_date not in data_dates:
-                data_dates.insert(0, start_idx_date)
+        # set an indicator to show whether we have data or not
+        self.has_data = True
+        if not Path(data_path).exists():
+            self.has_data = False
         else:
-            logger.warn("start_idx is not available. You might want to check data availability of {} before {}".format(ticker, start))
-        if end_idx is not None:
-            end_idx_date = int(data_files[end_idx].replace(".feather", ""))
-            if end_idx_date not in data_dates:
-                data_dates.append(end_idx_date)
-        else:
-            logger.warn("end_idx is not available. You might want to check data availability of {} after {}".format(ticker, end))
+            data_files = [f for f in os.listdir(data_path) if os.path.isfile(os.path.join(data_path, f))]
+            data_files = sorted(data_files)
+            data_dates = []
+            # Note: each feather file includes two trading days' data: for example, 20200619.feather file contains data
+            # in 2020-06-18 and 2020-06-19. Therefore we need to include the feather file in next trading day after `end`
+            # Theoretically we don't need to include feather file in the previous trading day before `start`, but in order
+            # to avoid data-not-available errors when we assign a particular beginning timestamp such that there is no
+            # snapshot data in that day, we also include the previous trading day data here.
+            start_idx = None
+            end_idx = None
+            for idx, data_file in enumerate(data_files):
+                data_date = int(data_file.replace(".feather", ""))
+                if data_date<start:
+                    start_idx = idx
+                    continue
+                elif data_date>=start and data_date<=end:
+                    data_dates.append(data_date)
+                elif data_date>end:
+                    end_idx = idx
+                    break
+            if start_idx is not None:
+                start_idx_date = int(data_files[start_idx].replace(".feather", ""))
+                if start_idx_date not in data_dates:
+                    data_dates.insert(0, start_idx_date)
+            else:
+                logger.warn("start_idx is not available. You might want to check data availability of {} before {}".format(ticker, start))
+            if end_idx is not None:
+                end_idx_date = int(data_files[end_idx].replace(".feather", ""))
+                if end_idx_date not in data_dates:
+                    data_dates.append(end_idx_date)
+            else:
+                logger.warn("end_idx is not available. You might want to check data availability of {} after {}".format(ticker, end))
 
-        self.data_dates = data_dates
-        self.data_path = data_path
-        self.data = self._read_row()
-        self._tick = None
-        self._snapshot = None
+            self.data_dates = data_dates
+            self.data_path = data_path
+            self.data = self._read_row()
+            self._tick = None
+            self._snapshot = None
 
     def read_file(self, source:str)->pd.DataFrame:
         """Read feather data to dataframe (using pyarrow)"""
@@ -160,6 +167,9 @@ class FeatherDataHandler(BaseDataHandler):
 
     def check_data_availability(self, start:datetime=None, end:datetime=None)->bool:
         """Check if data is available within the given range"""
+        # If no data at all, obviously there won't be any data within the date range
+        if not self.has_data:
+            return False
         start = self.start if start is None else start
         end = self.end if end is None else end
 
@@ -194,6 +204,7 @@ class FeatherDataHandler(BaseDataHandler):
             )
             return False
         return True
+
 
 
 

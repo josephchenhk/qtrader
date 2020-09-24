@@ -26,24 +26,37 @@ with open(f'setting/connect_bondsim.json') as json_file:
     HOST = setting["地址"]
     PORT = setting["端口"]
 
-def get_isins(issuer:str)->list:
+
+def get_isins(issuer: str) -> list:
     """Get vanilla bonds from the same issuer."""
-    # TODO(joseph): Treasury products need to be considered seperately.
-    data_path = "{}/real_estate_bonds_check.xlsx".format(FEATHER_DATA_PATH)
-    df = pd.read_excel(data_path)
-    df = df[(df["Issuer Name"] == issuer)
-            & (df["Maturity Type"] == "AT MATURITY")
-            & (df["Data Available"] == "yes")]
+    if issuer=="Treasury_GT":
+        df = pd.read_excel("{}GT_bonds_check.xlsx".format(FEATHER_DATA_PATH))
+        df = df[(df["Issuer Name"] == 'United States Treasury Note/Bond') & (df["Data Available"] == "yes")]
+    elif issuer=="Treasury_GB":
+        df = pd.read_excel("{}GB_bonds_check.xlsx".format(FEATHER_DATA_PATH))
+        df = df[(df["Issuer Name"] == "United States Treasury Bill") & (df["Data Available"] == "yes")]
+    else:
+        df = pd.read_excel("{}real_estate_bonds_check.xlsx".format(FEATHER_DATA_PATH))
+        df = df[(df["Issuer Name"] == issuer)
+                & (df["Maturity Type"] == "AT MATURITY")
+                & (df["Data Available"] == "yes")]
     isins = df["ISIN"].to_list()
+    #isins = isins[:30] #test
     return isins
 
-def get_bond_factsheet(isin:str)->dict:
+
+def get_factsheet(symbol:str, issuer:str)->dict:
     """Get bond information such as maturity date, issue date, and coupon."""
-    # TODO(joseph): Treasury products need to be considered seperately.
-    df = pd.read_excel("{}/real_estate_bonds_check.xlsx".format(FEATHER_DATA_PATH))
-    df = df[df["ISIN"]==isin]
+    if issuer=="Treasury_GT":
+        df = pd.read_excel("{}GT_bonds_check.xlsx".format(FEATHER_DATA_PATH))
+    elif issuer=="Treasury_GB":
+        df = pd.read_excel("{}GB_bonds_check.xlsx".format(FEATHER_DATA_PATH))
+    else:
+        df = pd.read_excel("{}/real_estate_bonds_check.xlsx".format(FEATHER_DATA_PATH))
+    df = df[df["ISIN"] == symbol]
     if df.empty:
         return None
+
     df = df[["Issue Date", "Maturity", "Cpn Freq Des", "Cpn"]]
     res = dict(zip(df.columns, df.iloc[0].values))
     res["Maturity"] = datetime.strptime(res["Maturity"], "%m/%d/%Y")
@@ -53,39 +66,31 @@ def get_bond_factsheet(isin:str)->dict:
     res["Issue Date"] = tz.localize(res["Issue Date"])
     return res
 
-def prepare_data():
-    issuer = "Greenland Global Investment Ltd"
-    isins = get_isins(issuer)
 
-    start = datetime(2020, 6, 19, 8, 0, 0)
-    end = datetime(2020, 6, 23, 7, 59, 59)
-    tz = pytz.timezone("Asia/Hong_Kong")
-    start = tz.localize(start)
-    end = tz.localize(end)
-
+def prepare_data(
+        issuer: str,
+        isins: list,
+        start: datetime,
+        end: datetime
+    ) -> tuple:
+    """"""
     source = "{}/{}".format(FEATHER_DATA_PATH, issuer)
     handlers = {}
     nodata_isins = []
-    print("开始准备回测数据 ... ")
+    print("Start to prepare data ... ")
     for isin in isins:
         ticker = "{}@BGN Corp".format(isin)
-        # TODO(joseph): each feather file might contain timestamps in two days, therefore should consider end+1
-        handler = FeatherDataHandler(source, ticker, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
-        tick = handler.read_tick()
-        if tick is None:
+        handler = FeatherDataHandler(source, ticker, start, end)
+        # validate data availability
+        has_data = handler.check_data_availability()
+        if not has_data:
             nodata_isins.append(isin)
-        handler = FeatherDataHandler(source, ticker, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+        handler = FeatherDataHandler(source, ticker, start, end)
         handlers["{}_handler".format(isin)] = handler
 
     # Remove tickers without data
     eff_isins = list(set(isins) - set(nodata_isins))
-
-    # Get factsheets
-    bond_factsheets = {}
-    for isin in eff_isins:
-        bond_factsheets[isin] = get_bond_factsheet(isin)
-    print("数据准备完成")
-    return start, eff_isins, handlers, bond_factsheets
+    return eff_isins, handlers
 
 
 class SimulatorServer:
@@ -184,6 +189,21 @@ class SimulatorServer:
 
 
 if __name__=="__main__":
-    cur_time, eff_isins, handlers, bond_factsheets = prepare_data()
-    s = SimulatorServer(cur_time=cur_time, symbols=eff_isins, handlers=handlers, factsheets=bond_factsheets)
-    s.start()
+    START_DATE = datetime(2020, 6, 17, 0, 0, 0)
+    END_DATE = datetime(2020, 6, 19, 0, 0, 10)
+    TIME_ZONE = "Asia/Hong_Kong"
+    tz = pytz.timezone(TIME_ZONE)
+    start = tz.localize(START_DATE)
+    end = tz.localize(END_DATE)
+    issuers = ["Greenland Global Investment Ltd", "China Evergrande Group"]
+
+    for issuer in issuers:
+        isins = get_isins(issuer)
+        eff_isins, handlers = prepare_data(issuer=issuer, isins=isins, start=start, end=end)
+        bond_factsheets = {}
+        for isn in eff_isins:
+            bond_factsheets[isn] = get_factsheet(symbol=isn, issuer=issuer)
+
+    print()
+    # s = SimulatorServer(cur_time=cur_time, symbols=eff_isins, handlers=handlers, factsheets=bond_factsheets)
+    # s.start()

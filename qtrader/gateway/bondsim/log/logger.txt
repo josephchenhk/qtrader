@@ -1,0 +1,18 @@
+2020-09-24 19:56:16,043 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192191@BGN Corp before 20200617
+2020-09-24 19:56:16,135 - feather_adapter.py[line:197] - ERROR: Data is only available after 2020-07-20 15:00:01+08:00, but we want to have it starting from 2020-06-17 00:00:00+08:00
+2020-09-24 19:56:16,138 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192191@BGN Corp before 20200617
+2020-09-24 19:56:16,140 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192605@BGN Corp before 20200617
+2020-09-24 19:56:16,159 - feather_adapter.py[line:197] - ERROR: Data is only available after 2020-07-17 16:05:16+08:00, but we want to have it starting from 2020-06-17 00:00:00+08:00
+2020-09-24 19:56:16,160 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192605@BGN Corp before 20200617
+2020-09-24 20:14:03,735 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192191@BGN Corp before 20200617
+2020-09-24 20:14:03,773 - feather_adapter.py[line:197] - ERROR: Data is only available after 2020-07-20 16:00:01+08:00, but we want to have it starting from 2020-06-17 00:00:00+08:00
+2020-09-24 20:14:03,775 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192191@BGN Corp before 20200617
+2020-09-24 20:14:03,775 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192605@BGN Corp before 20200617
+2020-09-24 20:14:03,788 - feather_adapter.py[line:197] - ERROR: Data is only available after 2020-07-17 16:05:16+08:00, but we want to have it starting from 2020-06-17 00:00:00+08:00
+2020-09-24 20:14:03,789 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192605@BGN Corp before 20200617
+2020-09-24 20:14:19,813 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192191@BGN Corp before 20200617
+2020-09-24 20:14:19,857 - feather_adapter.py[line:197] - ERROR: Data is only available after 2020-07-20 16:00:01+08:00, but we want to have it starting from 2020-06-17 00:00:00+08:00
+2020-09-24 20:14:19,858 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192191@BGN Corp before 20200617
+2020-09-24 20:14:19,859 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192605@BGN Corp before 20200617
+2020-09-24 20:14:19,874 - feather_adapter.py[line:197] - ERROR: Data is only available after 2020-07-17 16:05:16+08:00, but we want to have it starting from 2020-06-17 00:00:00+08:00
+2020-09-24 20:14:19,875 - feather_adapter.py[line:64] - WARNING: start_idx is not available. You might want to check data availability of XS2207192605@BGN Corp before 20200617
