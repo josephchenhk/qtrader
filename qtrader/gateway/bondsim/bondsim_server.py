@@ -14,6 +14,7 @@ import time
 import threading
 import ast
 from dateutil.parser import parse
+from quantkits.logger import logger
 
 from qtrader.setting import FEATHER_DATA_PATH
 from qtrader.data_adaptors.feather_adapter import FeatherDataHandler
@@ -77,7 +78,7 @@ def prepare_data(
     source = "{}/{}".format(FEATHER_DATA_PATH, issuer)
     handlers = {}
     nodata_isins = []
-    print("Start to prepare data ... ")
+    logger.info("Start to prepare data ... ")
     for isin in isins:
         ticker = "{}@BGN Corp".format(isin)
         handler = FeatherDataHandler(source, ticker, start, end)
@@ -98,55 +99,44 @@ class SimulatorServer:
     HOST = HOST        # Standard loopback interface address (localhost)
     PORT = PORT        # Port to listen on (non-privileged ports are > 1023)
 
-    def __init__(self, cur_time:datetime, symbols:list, handlers:dict, factsheets:dict):
+    def __init__(self, cur_time:datetime, bond_data:dict):
         self.cur_time = cur_time
-        self.symbols = symbols
-        self.handlers = handlers
-        self.factsheets = factsheets
+
+        # self.symbols = symbols
+        # self.handlers = handlers
+        # self.factsheets = factsheets
+        self.bond_data = bond_data
+
         self.subscribed_symbols = []
-        self.last_snapshot_cache = {}
-        self.snapshot_cache = {}
-        print("开始校准历史数据时间戳 ...")
-        self.generate_snapshot() # 先将时间校准至当前时间cur_time
-        print("历史数据校准完毕")
+        # self.last_snapshot_cache = {}
+        # self.snapshot_cache = {}
+        # print("开始校准历史数据时间戳 ...")
+        # self.generate_snapshot() # 先将时间校准至当前时间cur_time
+        # print("历史数据校准完毕")
 
     def subscribe(self, symbols:list):
         """ 订阅市场数据 """
-        # TODO(joseph): give explicit hint on which symbol is not available
-        assert set(symbols).issubset(set(self.symbols)), "Data not available!"
-        self.subscribed_symbols = symbols
+        available_symbols = []
+        self.subscribed_bond_data = {}
+        for symbol in symbols:
+            print()
 
     def update_timer(self, time: datetime):
         """ 更新时钟，据此分发市场快照数据 """
         self.cur_time = time
 
-    def generate_snapshot(self):
+    def generate_snapshots(self):
         """ 负责分发市场数据 """
-        snapshot = {}
-        for symbol in self.symbols:
-            print(symbol)
-            handler = self.handlers.get("{}_handler".format(symbol))
-            # 如果有缓存，则看缓存市场数据的时间戳是否在当前时间之后
-            ss_cache = self.snapshot_cache.get(symbol, None)
-            if ss_cache is None:
-                # 前面数据已经清洗过了，这里默认必须有数据
-                ss_cache = handler.read_tick()
-                assert ss_cache is not None, "Symbol {} does not have data!"
-                self.last_snapshot_cache[symbol] = ss_cache
-                self.snapshot_cache[symbol] = ss_cache            
-            if ss_cache["datetime"] > self.cur_time:
-                snapshot[symbol] = self.last_snapshot_cache.get(symbol, None)
-                continue
-            else:
-                while ss_cache["datetime"] <= self.cur_time:
-                    lss_cache = ss_cache
-                    ss_cache = handler.read_tick()
-                self.last_snapshot_cache[symbol] = lss_cache
-                self.snapshot_cache[symbol] = ss_cache
-                snapshot[symbol] = lss_cache
-
-        self.snapshot = snapshot
-        return snapshot
+        snapshots = {issuer:{} for issuer in self.bond_data}
+        # TODO(joseph): this should be subscribed_symbols
+        for issuer in self.bond_data:
+            symbols = self.bond_data[issuer]["isins"]
+            handlers = self.bond_data[issuer]["handlers"]
+            for symbol in symbols:
+                handler = handlers.get(f"{symbol}_handler")
+                snapshots[issuer][symbol] = handler.read_snapshot(self.cur_time)
+        self.snapshots = snapshots
+        return snapshots
 
     def start_server(self):
         """ 另起独立线程处理连接"""
@@ -167,7 +157,7 @@ class SimulatorServer:
                     if data_dict["type"] == "TIMER":  # 每次收到更新timer信号，推送市场快照
                         timer = parse(data_dict["data"])
                         self.update_timer(timer)
-                        snapshot = self.generate_snapshot()
+                        snapshot = self.generate_snapshots()
                         snapshot_data = {}
                         for symbol, tick in snapshot.items():
                             tick_data = {k:v for k,v in tick.items() if k!="datetime"}
@@ -197,13 +187,18 @@ if __name__=="__main__":
     end = tz.localize(END_DATE)
     issuers = ["Greenland Global Investment Ltd", "China Evergrande Group"]
 
+    bond_data = {}
     for issuer in issuers:
+        bond_data[issuer] = {}
         isins = get_isins(issuer)
         eff_isins, handlers = prepare_data(issuer=issuer, isins=isins, start=start, end=end)
         bond_factsheets = {}
         for isn in eff_isins:
             bond_factsheets[isn] = get_factsheet(symbol=isn, issuer=issuer)
+        bond_data[issuer]["isins"] = eff_isins
+        bond_data[issuer]["handlers"] = handlers
+        bond_data[issuer]["factsheets"] = bond_factsheets
 
     print()
-    # s = SimulatorServer(cur_time=cur_time, symbols=eff_isins, handlers=handlers, factsheets=bond_factsheets)
+    s = SimulatorServer(bond_data=bond_data)
     # s.start()

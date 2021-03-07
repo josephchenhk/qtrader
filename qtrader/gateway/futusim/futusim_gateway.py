@@ -74,7 +74,7 @@ STATUS_FUTU2VT = {
 }
 
 
-class FutuGateway(BaseGateway):
+class FutusimGateway(BaseGateway):
     """"""
 
     default_setting = {
@@ -89,7 +89,7 @@ class FutuGateway(BaseGateway):
 
     def __init__(self, event_engine):
         """Constructor"""
-        super(FutuGateway, self).__init__(event_engine, "FUTU")
+        super(FutusimGateway, self).__init__(event_engine, "FUTUSIM")
 
         self.quote_ctx = None
         self.trade_ctx = None
