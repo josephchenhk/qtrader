@@ -2,9 +2,20 @@
 
 QTrader is a light and flexible event-driven framework that can be used to backtest different algorithmic strategies.
 
+## Quick install
+
+You may run the folllowing command to install QTrader immediately:
+
+```python
+# python 3.7 or above is supported
+>> conda create -n qtrader python=3.7
+>> conda activate qtrader
+>> pip install git+https://github.com/josephchenhk/qtrader@master
+```
+
 ## Get the data ready
 
-QTrader supports bar data at the moment. What you need to prepare is CSV files with file names in the format of 
+QTrader supports 1 minute bar data at the moment. What you need to prepare is CSV files with file names in the format of 
 "[symbol]-yyyy-mm-dd.csv"
 
 ![alt text](./contents/bar_data_sample.png "bar data sample")
@@ -15,8 +26,11 @@ And you should specify the path of data folder in `qtrader.config.config.py`. Fo
 DATA_PATH = "./qtrader/data" 
 ```
 
-and put all your CSV files to that folder.
+and put all your CSV files to the following folder:
 
+```python
+{DATA_PATH}/k_line/K_1M
+```
 
 ## How to implement a strategy
 
@@ -100,4 +114,8 @@ backtest.run()
 # plot pnl curve of the backtest
 plot_pnl(backtest.recorder.datetime, backtest.recorder.portfolio_value)
 ```
+
+
+
+
 
