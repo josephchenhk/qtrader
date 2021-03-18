@@ -147,5 +147,8 @@ qtrader/data/
 # log
 qtrader/log/
 
-# confit
+# config
 qtrader/config/config-private.py
+
+# strategies
+examples/pairtrade_strategy/*
