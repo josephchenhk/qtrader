@@ -1,6 +1,13 @@
-# QTrader: A Light Event-Driven Backtesting Framework
+# QTrader: A Light Event-Driven Algorithmic Trading Engine
 
-QTrader is a light and flexible event-driven framework that can be used to backtest different algorithmic strategies.
+QTrader is a light and flexible event-driven algorithmic trading engine that can be used to backtest strategies, 
+and seamlessly switch to live trading without any pain.
+
+## Key features
+
+* Completely **same code** for backtesting/simulation/live trading 
+
+* Currently only support equity trading
 
 ## Quick install
 
@@ -23,7 +30,7 @@ QTrader supports 1 minute bar data at the moment. What you need to prepare is CS
 And you should specify the path of data folder in `qtrader.config.config.py`. For example, set
 
 ```python
-DATA_PATH = "./qtrader/data" 
+DATA_PATH = "./qtrader/examples/data" 
 ```
 
 and put all your CSV files to the following folder:
@@ -77,45 +84,68 @@ recorder = BacktestRecorder(var=[])
 Here we go! Here is a sample of running a backtest in QTrader:
 
 ```python
-# prepare stock list
-stock_list = [
-    Stock(code="HK.00700", lot_size=100, stock_name="腾讯控股"),
-    Stock(code="HK.09988", lot_size=100, stock_name="阿里巴巴-SW"),
-]
+# prepare stocks
+stock = Stock(code="HK.01157", lot_size=200, stock_name="中联重科")
+stock_list = [stock]
 
-# A BacktestGateway is a market simulator
 market = BacktestGateway(
     securities=stock_list,
-    start=datetime(2021, 1, 25, 9, 30, 0, 0),
-    end=datetime(2021, 2, 1, 12, 0, 0, 0),
+    start=datetime(2021, 3, 15, 9, 30, 0, 0),
+    end=datetime(2021, 3, 17, 16, 0, 0, 0),
 )
+
 # position management
 position = Position()
 # account balance management
 account_balance = AccountBalance()
 # portfolio management
 portfolio = Portfolio(account_balance=account_balance,
-                        position=position,
-                        market=market)
+                      position=position,
+                      market=market)
 # execution engine
 engine = Engine(portfolio)
 
-# initialize a strategy
-strategy = MyStrategy(stock_list, engine=engine)
+# initialize strategy
+strategy = DemoStrategy(securities=stock_list, engine=engine)
 strategy.init_strategy()
 
-# initialize a backtest
-recorder = BacktestRecorder()
-backtest = Backtest(strategy, recorder)
+# start event engine
+recorder = BarEventEngineRecorder()
+event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.BACKTEST)
+event_engine.run()
 
-# run a backtest
-backtest.run()
-
-# plot pnl curve of the backtest
-plot_pnl(backtest.recorder.datetime, backtest.recorder.portfolio_value)
+# plot profit and loss curve
+plot_pnl(event_engine.recorder.datetime, event_engine.recorder.portfolio_value)
 ```
 
 
+## Live trading
+
+Ok, your strategy looks good now. How can you put it to live trading? In QTrader it is
+extremely easy to switch from backtest mode to simulation or live trading mode. What you 
+need to modify is just **two** lines:
+
+```python
+...
+
+# specify the live trading gateway
+market = FutuGateway(
+    securities=stock_list,
+    end=datetime(2021, 3, 18, 16, 0, 0, 0),
+)
+
+...
+
+# turn on Simulation/Livetrading mode
+event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.SIMULATE)
+event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.LIVETRADE)
+
+...
+```
 
 
+Here you go! Enjoy the trading.
+
+**Important Notice**: In the demo sample, the live trading mode will keep sending orders, please be aware 
+of the risk when running it.
 
