@@ -146,3 +146,6 @@ qtrader/data/
 
 # log
 qtrader/log/
+
+# confit
+qtrader/config/config-private.py
