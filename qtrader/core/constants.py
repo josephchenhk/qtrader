@@ -6,6 +6,14 @@
 # @Software: PyCharm
 from enum import Enum
 
+class TradeMode(Enum):
+    """
+    Trading mode
+    """
+    BACKTEST = "回测"
+    LIVETRADE = "实盘"
+    SIMULATE = "仿真"
+
 
 class Direction(Enum):
     """
@@ -34,3 +42,22 @@ class OrderType(Enum):
     STOP = "STOP"
     FAK = "FAK"
     FOK = "FOK"
+
+class OrderStatus(Enum):
+    """
+    Order status
+    """
+    UNKNOWN = "未知"
+    SUBMITTED = "已提交"
+    FILLED = "全部成交"
+    PART_FILLED = "部分成交"
+    CANCELLED = "已取消"
+    FAILED = "提交失败"
+
+class Exchange(Enum):
+    SEHK = "SEHK"           # Stock Exchange of Hong Kong
+    HKFE = "HKFE"           # Hong Kong Futures Exchange
+
+    SSE = "SSE"             # Shanghai Stock Exchange
+    SZSE = "SZSE"           # Shenzhen Stock Exchange
+

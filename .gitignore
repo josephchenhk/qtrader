@@ -145,7 +145,11 @@ qtrader/data/
 .idea/
 
 # log
-qtrader/log/
+log/*
+qtrader/log/*
+
+# main
+main-tmp.py
 
 # config
 qtrader/config/config-private.py

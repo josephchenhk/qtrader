@@ -66,6 +66,9 @@ def _get_full_data(security:Stock,
     if full_data.empty:
         raise ValueError(f"{security} 在时间段 [{start} - {end}] 内的历史数据不存在！")
     full_data = full_data.sort_values(by=['time_key'])
+    start_str = start.strftime("%Y-%m-%d %H:%M:%S")
+    end_str = end.strftime("%Y-%m-%d %H:%M:%S")
+    full_data = full_data[(full_data['time_key']>=start_str) & (full_data['time_key']<=end_str)]
     return full_data
 
 

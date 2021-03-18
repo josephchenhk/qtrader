@@ -5,4 +5,11 @@
 # @FileName: config.py
 # @Software: PyCharm
 
-DATA_PATH = "./qtrader/data"
+
+DATA_PATH = "./qtrader/examples/data"
+
+FUTU = {
+    "host": "127.0.0.1",
+    "port": 11111,
+    "pwd_unlock": 123456,
+}

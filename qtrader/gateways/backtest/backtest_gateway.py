@@ -5,18 +5,22 @@
 # @FileName: backtest_gateway.py
 # @Software: PyCharm
 
+import uuid
 import math
 from datetime import datetime
 from typing import List, Dict, Iterator
 from dateutil.relativedelta import relativedelta
 
+from qtrader.core.constants import TradeMode, OrderStatus
 from qtrader.core.data import _get_full_data, _get_data_iterator
+from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.security import Stock
 from qtrader.core.utility import Time
+from qtrader.gateways import BaseGateway
 
 
-class BacktestGateway:
+class BacktestGateway(BaseGateway):
 
     # 定义交易时间 (港股)
     TRADING_HOURS_AM = [Time(9,30,0), Time(12,0,0)]
@@ -43,6 +47,7 @@ class BacktestGateway:
         :param dtype:
         :return:
         """
+        super().__init__()
         data_iterators = {}
         trading_days = {}
         for security in securities:
@@ -60,7 +65,11 @@ class BacktestGateway:
         self.next_cache = {s:None for s in securities}
         self.start = start
         self.end = end
-        self.datetime = start
+        self.market_datetime = start
+
+    def set_trade_mode(self, trade_mode:TradeMode):
+        """设置交易模式"""
+        self.trade_mode = trade_mode
 
     def is_trading_time(self, cur_datetime:datetime)->bool:
         """
@@ -128,7 +137,7 @@ class BacktestGateway:
             next_trading_daytime = next_time
         return next_trading_daytime
 
-    def get_recent_data(self, cur_datetime:datetime, security:Stock):
+    def get_recent_bar(self, security:Stock, cur_datetime:datetime):
         """
         获取最接近当前时间的数据点
 
@@ -136,7 +145,7 @@ class BacktestGateway:
         :param cur_time:
         :return:
         """
-        assert cur_datetime>=self.datetime, f"历史不能回头，当前时间{cur_datetime}在dispatcher的系统时间{self.datetime}之前了"
+        assert cur_datetime>=self.market_datetime, f"历史不能回头，当前时间{cur_datetime}在dispatcher的系统时间{self.market_datetime}之前了"
         data_it = self.data_iterators[security]
         data_prev = self.prev_cache[security]
         data_next = self.next_cache[security]
@@ -166,13 +175,42 @@ class BacktestGateway:
                 except StopIteration:
                     pass
 
-        self.datetime = cur_datetime
+        self.market_datetime = cur_datetime
         return self.prev_cache[security]
 
-    def process_order(self, order:Order):
+    def place_order(self, order:Order):
         """最简单的处理，假设全部成交"""
-        order.filled_time = self.datetime
-        return order
+        order.filled_time = self.market_datetime
+        order.filled_quantity = order.quantity
+        order.filled_avg_price = order.price
+        order.status = OrderStatus.FILLED
+        orderid = "bt-order-" + str(uuid.uuid4())
+        dealid = "bt-deal-" + str(uuid.uuid4())
+        self.orders[orderid] = order
+
+        deal = Deal(
+            security=order.security,
+            direction=order.direction,
+            offset=order.offset,
+            order_type=order.order_type,
+            updated_time=self.market_datetime,
+            filled_avg_price=order.price,
+            filled_quantity=order.quantity,
+            dealid=dealid,
+            orderid=orderid
+        )
+        self.deals[dealid] = deal
+
+        return orderid
+
+    def cancel_order(self, orderid):
+        """取消订单"""
+        order = self.orders.get(orderid)
+        if order.status in (OrderStatus.FILLED, OrderStatus.CANCELLED, OrderStatus.FAILED):
+            print(f"不能取消订单{orderid}，因为订单状态已经为{order.status}")
+            return
+        order.status = OrderStatus.CANCELLED
+        self.orders[orderid] = order
 
 
 def fees(*trades:Dict)->float:

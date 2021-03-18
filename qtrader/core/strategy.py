@@ -28,7 +28,7 @@ class BaseStrategy:
         raise NotImplementedError("on_tick 方法需要被覆写")
 
     def get_datetime(self):
-        return self.engine.market.datetime
+        return self.engine.market.market_datetime
 
     def get_portfolio_value(self):
         return self.engine.portfolio.value
