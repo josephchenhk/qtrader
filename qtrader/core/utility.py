@@ -7,11 +7,13 @@
 
 from functools import total_ordering, wraps
 from timeit import default_timer as timer
-
+import threading
 
 @total_ordering
 class Time:
-    """ Customized timer"""
+    """
+    Customized timer
+    """
 
     def __init__(self, hour:int, minute:int, second:int):
         self.hour = hour
@@ -42,8 +44,37 @@ class Time:
     __repr__=__str__
 
 
+class BlockingDict(object):
+    """
+    Blocking dict can be used to store orders and deals in the gateway
+    Ref: https://stackoverflow.com/questions/26586328/blocking-dict-in-python
+    """
+    def __init__(self):
+        self.queue = {}
+        self.cv = threading.Condition()
+
+    def put(self, key, value):
+        with self.cv:
+            self.queue[key] = value
+            # self.cv.notify()
+            self.cv.notify_all()
+
+    def pop(self):
+        with self.cv:
+            while not self.queue:
+                self.cv.wait()
+            return self.queue.popitem()
+
+    def get(self, key):
+        with self.cv:
+            while key not in self.queue:
+                self.cv.wait()
+            return self.queue.get(key)
+
 def timeit(func):
-    """Measure execution time of a function"""
+    """
+    Measure execution time of a function
+    """
 
     @wraps(func)
     def wrapper(*args, **kwargs):
