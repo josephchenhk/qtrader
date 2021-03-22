@@ -20,6 +20,7 @@ class BaseGateway(ABC):
     to different trading systems.
     """
     def __init__(self, securities:List[Stock]):
+        self._market_datetime = None
         self.securities = securities
         self.orders = BlockingDict()
         self.deals = BlockingDict()
@@ -31,7 +32,12 @@ class BaseGateway(ABC):
     @property
     def market_datetime(self):
         """市场当前时间"""
-        raise NotImplementedError("market_datetime has not been implemented")
+        return self._market_datetime
+
+    @market_datetime.setter
+    def market_datetime(self, value):
+        """设置市场当前时间"""
+        self._market_datetime = value
 
     def get_order(self, orderid):
         """获取订单的状态"""
@@ -54,9 +60,9 @@ class BaseGateway(ABC):
         """cancel order"""
         raise NotImplementedError("cancel_order has not been implemented")
 
-    def get_account_balance(self):
-        """Account balance"""
-        raise NotImplementedError("get_account_balance has not been implemented")
+    def get_balance(self):
+        """Balance"""
+        raise NotImplementedError("get_balance has not been implemented")
 
     def get_position(self):
         """Position"""

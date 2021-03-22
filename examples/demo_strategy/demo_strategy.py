@@ -30,6 +30,10 @@ class DemoStrategy(BaseStrategy):
     def on_bar(self, cur_data:Dict[Stock, Bar]):
         self.engine.log.info(f"当前bar: {cur_data}")
 
+        # check balance
+        balance = self.engine.get_balance()
+        print(balance)
+
         # send orders
         for security in cur_data:
             bar = cur_data[security]

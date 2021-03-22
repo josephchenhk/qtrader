@@ -55,9 +55,23 @@ class OrderStatus(Enum):
     FAILED = "提交失败"
 
 class Exchange(Enum):
+    """
+    Exchanges
+    """
     SEHK = "SEHK"           # Stock Exchange of Hong Kong
     HKFE = "HKFE"           # Hong Kong Futures Exchange
-
     SSE = "SSE"             # Shanghai Stock Exchange
     SZSE = "SZSE"           # Shenzhen Stock Exchange
+
+
+class Currency(Enum):
+    """
+    Currency
+    """
+    NONE = "未知货币"
+    HKD = "港元"
+    USD = "美元"
+    CNH = "离岸人民币"
+
+
 

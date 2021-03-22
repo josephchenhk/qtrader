@@ -59,7 +59,7 @@ class Portfolio:
     def value(self):
         v = self.account_balance.total
         for security in self.position.holdings:
-            cur_price = self.market.get_recent_bar(security).close
+            cur_price = self.market.get_recent_bar(security=security, cur_datetime=self.market.market_datetime).close
             for direction in self.position.holdings[security]:
                 position_data = self.position.holdings[security][direction]
                 if direction==Direction.LONG:

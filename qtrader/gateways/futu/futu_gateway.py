@@ -10,6 +10,7 @@ from typing import Dict, List, Union
 
 from futu import *
 
+from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import Direction, TradeMode
 from qtrader.core.constants import OrderStatus as QTOrderStatus
 from qtrader.core.deal import Deal
@@ -200,6 +201,20 @@ class FutuGateway(BaseGateway):
         )
         if code:
             print(f"撤单失败：{data}")
+
+    def get_balance(self):
+        """获取资金"""
+        data = self.trd_ctx.accinfo_query(trd_env=self.futu_trd_env)
+        balance = AccountBalance()
+        for col in data.columns:
+            if col in ('risk_level', 'risk_status'):
+                continue
+            setattr(balance, col, data[col].values[0])
+        return balance
+
+    def get_position(self):
+        """获取持仓"""
+        return
 
 
 

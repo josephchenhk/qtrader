@@ -95,3 +95,17 @@ class Engine:
     def find_deals_with_orderid(self, orderid:str)->List[Deal]:
         """根据orderid找出成交的deal"""
         return self.market.find_deals_with_orderid(orderid)
+
+    def get_balance(self):
+        """balance"""
+        try:
+            self.portfolio.account_balance = self.market.get_balance()
+        except Exception as e:
+            self.log.warn(f"Can not update balance from market: {e}")
+        finally:
+            return self.account_balance
+
+
+    def get_position(self):
+        """position"""
+        return self.market.get_position()
