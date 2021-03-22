@@ -16,7 +16,7 @@ from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.security import Stock
 from qtrader.core.data import Bar
-from qtrader.core.utility import Time
+from qtrader.core.utility import Time, try_parsing_datetime
 from qtrader.config import FUTU
 from qtrader.gateways import BaseGateway
 
@@ -39,6 +39,7 @@ class FutuGateway(BaseGateway):
                  start: datetime = None,
                  end: datetime = None,
         ):
+        super().__init__()
         self.securities = securities
         self.start = start
         self.end = end
@@ -86,38 +87,30 @@ class FutuGateway(BaseGateway):
     def process_order(self, content:pd.DataFrame):
         """更新订单的状态"""
         orderid = content["order_id"].values[0]
-        order = self.orders.get(orderid)
-        # TODO: a low efficiency blocking
-        while order is None:
-            sleep(0.1)
-            order = self.orders.get(orderid)
-        order.updated_time = datetime.strptime(content["updated_time"].values[0], "%Y-%m-%d %H:%M:%S.%f")
+        order = self.orders.get(orderid) # blocking
+        order.updated_time = try_parsing_datetime(content["updated_time"].values[0])
         order.filled_avg_price = content["dealt_avg_price"].values[0]
         order.filled_quantity = content["dealt_qty"].values[0]
         order.status = convert_orderstatus_futu2qt(content["order_status"].values[0])
-        self.orders[orderid] = order
+        self.orders.put(orderid, order)
 
     def process_deal(self, content: pd.DataFrame):
         """更新成交的信息"""
         orderid = content["order_id"].values[0]
         dealid = content["deal_id"].values[0]
-        order = self.orders.get(orderid)
-        # TODO: a low efficiency blocking
-        while order is None:
-            sleep(0.1)
-            order = self.orders.get(orderid)
+        order = self.orders.get(orderid) # blocking
         deal = Deal(
             security=order.security,
             direction=order.direction,
             offset=order.offset,
             order_type=order.order_type,
-            updated_time=datetime.strptime(content["create_time"].values[0], "%Y-%m-%d %H:%M:%S.%f"),
+            updated_time=try_parsing_datetime(content["create_time"].values[0]),
             filled_avg_price=content["price"].values[0],
             filled_quantity=content["qty"].values[0],
             dealid=dealid,
             orderid=orderid
         )
-        self.deals[dealid] = deal
+        self.deals.put(dealid, deal)
 
     @property
     def market_datetime(self):
@@ -194,7 +187,7 @@ class FutuGateway(BaseGateway):
             return ""
         orderid = data["order_id"].values[0]   # 如果成功提交订单，一定会返回一个orderid
         order.status = QTOrderStatus.SUBMITTED # 修改状态为已提交
-        self.orders[orderid] = order           # 稍后通过callback更新order状态
+        self.orders.put(orderid, order)        # 稍后通过callback更新order状态
         return orderid
 
     def cancel_order(self, orderid):

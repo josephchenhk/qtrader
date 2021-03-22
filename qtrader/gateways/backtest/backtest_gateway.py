@@ -186,7 +186,7 @@ class BacktestGateway(BaseGateway):
         order.status = OrderStatus.FILLED
         orderid = "bt-order-" + str(uuid.uuid4())
         dealid = "bt-deal-" + str(uuid.uuid4())
-        self.orders[orderid] = order
+        self.orders.put(orderid, order)
 
         deal = Deal(
             security=order.security,
@@ -199,7 +199,7 @@ class BacktestGateway(BaseGateway):
             dealid=dealid,
             orderid=orderid
         )
-        self.deals[dealid] = deal
+        self.deals.put(dealid, deal)
 
         return orderid
 
@@ -210,7 +210,7 @@ class BacktestGateway(BaseGateway):
             print(f"不能取消订单{orderid}，因为订单状态已经为{order.status}")
             return
         order.status = OrderStatus.CANCELLED
-        self.orders[orderid] = order
+        self.orders.put(orderid, order)
 
 
 def fees(*trades:Dict)->float:

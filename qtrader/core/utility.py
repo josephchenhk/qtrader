@@ -7,6 +7,7 @@
 
 from functools import total_ordering, wraps
 from timeit import default_timer as timer
+from datetime import datetime
 import threading
 
 @total_ordering
@@ -52,6 +53,7 @@ class BlockingDict(object):
     def __init__(self):
         self.queue = {}
         self.cv = threading.Condition()
+        self.count = 0
 
     def put(self, key, value):
         with self.cv:
@@ -71,6 +73,17 @@ class BlockingDict(object):
                 self.cv.wait()
             return self.queue.get(key)
 
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self.cv:
+            if self.count == len(self.queue):
+                raise StopIteration
+            self.count += 1
+            return list(self.queue.keys())[self.count-1]
+
+
 def timeit(func):
     """
     Measure execution time of a function
@@ -85,3 +98,15 @@ def timeit(func):
         return res
 
     return wrapper
+
+
+def try_parsing_datetime(text:str):
+    """
+    Parsing different datetime format strings
+    """
+    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            pass
+    raise ValueError('no valid date format found')
