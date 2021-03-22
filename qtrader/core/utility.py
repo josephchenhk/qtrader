@@ -79,6 +79,7 @@ class BlockingDict(object):
     def __next__(self):
         with self.cv:
             if self.count == len(self.queue):
+                self.count = 0
                 raise StopIteration
             self.count += 1
             return list(self.queue.keys())[self.count-1]
@@ -110,3 +111,12 @@ def try_parsing_datetime(text:str):
         except ValueError:
             pass
     raise ValueError('no valid date format found')
+
+if __name__=="__main__":
+    blockdict = BlockingDict()
+    blockdict.put(1, "a")
+    blockdict.put(2, "b")
+    for bd in blockdict:
+        print(bd, blockdict.get(bd))
+    for bd in blockdict:
+        print(bd, blockdict.get(bd))
