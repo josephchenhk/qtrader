@@ -43,7 +43,7 @@ class Deal:
     def __str__(self):
         return f"Deal[{self.security}, direction={self.direction}, " + \
                f"offset={self.offset}, ordertype={self.order_type}, updated_time={self.updated_time}, " +\
-               f"filled_avg_price={self.filled_avg_price}, filled_quantity={self.filled_quantity}" +\
+               f"filled_avg_price={self.filled_avg_price}, filled_quantity={self.filled_quantity}, " +\
                f"dealid={self.dealid}, orderid={self.orderid}]"
 
     __repr__ = __str__

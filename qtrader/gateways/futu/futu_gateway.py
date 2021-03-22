@@ -39,8 +39,7 @@ class FutuGateway(BaseGateway):
                  start: datetime = None,
                  end: datetime = None,
         ):
-        super().__init__()
-        self.securities = securities
+        super().__init__(securities)
         self.start = start
         self.end = end
 

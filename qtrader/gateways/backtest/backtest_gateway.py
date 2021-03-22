@@ -47,7 +47,7 @@ class BacktestGateway(BaseGateway):
         :param dtype:
         :return:
         """
-        super().__init__()
+        super().__init__(securities)
         data_iterators = {}
         trading_days = {}
         for security in securities:

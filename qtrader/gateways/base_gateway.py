@@ -9,6 +9,7 @@ from typing import List
 
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
+from qtrader.core.security import Stock
 from qtrader.core.utility import BlockingDict
 
 
@@ -18,13 +19,19 @@ class BaseGateway(ABC):
     Abstract gateway class for creating gateways connection
     to different trading systems.
     """
-    def __init__(self):
+    def __init__(self, securities:List[Stock]):
+        self.securities = securities
         self.orders = BlockingDict()
         self.deals = BlockingDict()
 
     def close(self):
         """与实盘对应的功能，在回测gateway里无需实现任何功能"""
         pass
+
+    @property
+    def market_datetime(self):
+        """市场当前时间"""
+        raise NotImplementedError("market_datetime has not been implemented")
 
     def get_order(self, orderid):
         """获取订单的状态"""
