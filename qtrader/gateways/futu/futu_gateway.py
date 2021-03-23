@@ -167,40 +167,40 @@ class FutuGateway(BaseGateway):
         :param cur_time:
         :return:
         """
-        ret, data = self.quote_ctx.get_cur_kline(security.code, num_of_bars, SubType.K_1M, AuType.QFQ)  # 获取港股00700最近2个K线数据
-        if ret == RET_OK:
-            bars = []
-            for i in range(data.shape[0]):
-                bar_time = datetime.strptime(data.loc[i, "time_key"], "%Y-%m-%d %H:%M:%S")
-                # if bar_time>cur_datetime:
-                #     break
-                bar = Bar(
-                    datetime = bar_time,
-                    security = security,
-                    open = data.loc[i, "open"],
-                    high = data.loc[i, "high"],
-                    low = data.loc[i, "low"],
-                    close = data.loc[i, "close"],
-                    volume = data.loc[i, "volume"]
-                )
-                bars.append(bar)
-            if len(bars)==1:
-                return bars[0]
-            else:
-                return bars
-        else:
+        ret_code, data = self.quote_ctx.get_cur_kline(security.code, num_of_bars, SubType.K_1M, AuType.QFQ)  # 获取港股00700最近2个K线数据
+        if ret_code:
             print('error:', data)
+            return
+        bars = []
+        for i in range(data.shape[0]):
+            bar_time = datetime.strptime(data.loc[i, "time_key"], "%Y-%m-%d %H:%M:%S")
+            # if bar_time>cur_datetime:
+            #     break
+            bar = Bar(
+                datetime = bar_time,
+                security = security,
+                open = data.loc[i, "open"],
+                high = data.loc[i, "high"],
+                low = data.loc[i, "low"],
+                close = data.loc[i, "close"],
+                volume = data.loc[i, "volume"]
+            )
+            bars.append(bar)
+        if len(bars)==1:
+            return bars[0]
+        else:
+            return bars
 
     def place_order(self, order:Order):
         """提交订单"""
-        code, data = self.trd_ctx.place_order(
+        ret_code, data = self.trd_ctx.place_order(
             price=order.price,
             qty=order.quantity,
             code=order.security.code,
             trd_side=convert_direction_qt2futu(order.direction),
             trd_env=self.futu_trd_env
         )
-        if code:
+        if ret_code:
             print(f"提交订单失败：{data}")
             return ""
         orderid = data["order_id"].values[0]   # 如果成功提交订单，一定会返回一个orderid
@@ -210,19 +210,22 @@ class FutuGateway(BaseGateway):
 
     def cancel_order(self, orderid):
         """取消订单"""
-        code, data = self.trd_ctx.modify_order(
+        ret_code, data = self.trd_ctx.modify_order(
             ModifyOrderOp.CANCEL,
             orderid,
             0,
             0,
             trd_env=self.futu_trd_env
         )
-        if code:
+        if ret_code:
             print(f"撤单失败：{data}")
 
     def get_broker_balance(self)->AccountBalance:
         """获取券商资金"""
-        ret, data = self.trd_ctx.accinfo_query(trd_env=self.futu_trd_env)
+        ret_code, data = self.trd_ctx.accinfo_query(trd_env=self.futu_trd_env)
+        if ret_code:
+            print(f"获取券商资金失败：{data}")
+            return
         balance = AccountBalance()
         balance.cash = data["cash"].values[0]
         balance.power = data["power"].values[0]
@@ -240,7 +243,10 @@ class FutuGateway(BaseGateway):
 
     def get_all_broker_positions(self)->List[PositionData]:
         """获取券商所有持仓"""
-        ret, data = self.trd_ctx.position_list_query(trd_env=self.futu_trd_env)
+        ret_code, data = self.trd_ctx.position_list_query(trd_env=self.futu_trd_env)
+        if ret_code:
+            print(f"获取券商所有持仓失败：{data}")
+            return
         positions = []
         for idx, row in data.iterrows():
             position_data = PositionData(
