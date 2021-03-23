@@ -11,10 +11,12 @@ from datetime import datetime
 from typing import List, Dict, Iterator
 from dateutil.relativedelta import relativedelta
 
-from qtrader.core.constants import TradeMode, OrderStatus
+from qtrader.core.balance import AccountBalance
+from qtrader.core.constants import TradeMode, OrderStatus, Direction
 from qtrader.core.data import _get_full_data, _get_data_iterator
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
+from qtrader.core.position import PositionData
 from qtrader.core.security import Stock
 from qtrader.core.utility import Time
 from qtrader.gateways import BaseGateway
@@ -211,6 +213,18 @@ class BacktestGateway(BaseGateway):
             return
         order.status = OrderStatus.CANCELLED
         self.orders.put(orderid, order)
+
+    def get_broker_balance(self)->AccountBalance:
+        """获取券商资金 (回测此接口不可用)"""
+        return None
+
+    def get_broker_position(self, security:Stock, direction:Direction)->PositionData:
+        """获取券商持仓 (回测此接口不可用)"""
+        return None
+
+    def get_all_broker_positions(self)->List[PositionData]:
+        """获取券商所有持仓 (回测此接口不可用)"""
+        return None
 
 
 def fees(*trades:Dict)->float:

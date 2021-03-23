@@ -32,7 +32,13 @@ class DemoStrategy(BaseStrategy):
 
         # check balance
         balance = self.engine.get_balance()
-        print(balance)
+        broker_balance = self.engine.get_broker_balance()
+        print(balance, broker_balance)
+
+        # check position
+        positions = self.engine.get_all_positions()
+        broker_positions = self.engine.get_all_broker_positions()
+        print(positions, broker_positions)
 
         # send orders
         for security in cur_data:

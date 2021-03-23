@@ -7,8 +7,11 @@
 from abc import ABC
 from typing import List
 
+from qtrader.core.balance import AccountBalance
+from qtrader.core.constants import Direction
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
+from qtrader.core.position import PositionData
 from qtrader.core.security import Stock
 from qtrader.core.utility import BlockingDict
 
@@ -53,18 +56,21 @@ class BaseGateway(ABC):
         return found_deals
 
     def place_order(self, order:Order):
-        """place order"""
+        """下单"""
         raise NotImplementedError("place_order has not been implemented")
 
     def cancel_order(self, orderid):
-        """cancel order"""
+        """取消下单"""
         raise NotImplementedError("cancel_order has not been implemented")
 
-    def get_balance(self):
-        """Balance"""
-        raise NotImplementedError("get_balance has not been implemented")
+    def get_broker_balance(self)->AccountBalance:
+        """获取券商资金"""
+        raise NotImplementedError("get_broker_balance has not been implemented")
 
-    def get_position(self):
-        """Position"""
-        raise NotImplementedError("get_position has not been implemented")
+    def get_broker_position(self, security:Stock, direction:Direction)->PositionData:
+        """获取券商持仓"""
+        raise NotImplementedError("get_broker_position has not been implemented")
 
+    def get_all_broker_positions(self)->List[PositionData]:
+        """获取券商所有持仓"""
+        raise NotImplementedError("get_all_broker_positions has not been implemented")

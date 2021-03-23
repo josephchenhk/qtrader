@@ -5,6 +5,7 @@
 # @FileName: futu_gateway.py
 # @Software: PyCharm
 import math
+import uuid
 from time import sleep
 from typing import Dict, List, Union
 
@@ -15,6 +16,7 @@ from qtrader.core.constants import Direction, TradeMode
 from qtrader.core.constants import OrderStatus as QTOrderStatus
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
+from qtrader.core.position import Position, PositionData
 from qtrader.core.security import Stock
 from qtrader.core.data import Bar
 from qtrader.core.utility import Time, try_parsing_datetime
@@ -92,6 +94,21 @@ class FutuGateway(BaseGateway):
         order.filled_avg_price = content["dealt_avg_price"].values[0]
         order.filled_quantity = content["dealt_qty"].values[0]
         order.status = convert_orderstatus_futu2qt(content["order_status"].values[0])
+        # 富途的仿真环境不推送deal，需要在这里进行模拟处理
+        if self.trade_mode==TradeMode.SIMULATE and order.status in (QTOrderStatus.FILLED, QTOrderStatus.PART_FILLED):
+            dealid = "futu-sim-deal-" + str(uuid.uuid4())
+            deal = Deal(
+                security=order.security,
+                direction=order.direction,
+                offset=order.offset,
+                order_type=order.order_type,
+                updated_time=order.updated_time,
+                filled_avg_price=order.filled_avg_price,
+                filled_quantity=order.filled_quantity,
+                dealid=dealid,
+                orderid=orderid
+            )
+            self.deals.put(dealid, deal)
         self.orders.put(orderid, order)
 
     def process_deal(self, content: pd.DataFrame):
@@ -137,6 +154,7 @@ class FutuGateway(BaseGateway):
         :param cur_datetime:
         :return:
         """
+        return True
         # TODO: 先判断是否交易日
         cur_time = Time(hour=cur_datetime.hour, minute=cur_datetime.minute, second=cur_datetime.second)
         return (self.TRADING_HOURS_AM[0]<=cur_time<=self.TRADING_HOURS_AM[1]) or (self.TRADING_HOURS_PM[0]<=cur_time<=self.TRADING_HOURS_PM[1])
@@ -202,19 +220,38 @@ class FutuGateway(BaseGateway):
         if code:
             print(f"撤单失败：{data}")
 
-    def get_balance(self):
-        """获取资金"""
-        data = self.trd_ctx.accinfo_query(trd_env=self.futu_trd_env)
+    def get_broker_balance(self)->AccountBalance:
+        """获取券商资金"""
+        ret, data = self.trd_ctx.accinfo_query(trd_env=self.futu_trd_env)
         balance = AccountBalance()
-        for col in data.columns:
-            if col in ('risk_level', 'risk_status'):
-                continue
-            setattr(balance, col, data[col].values[0])
+        balance.cash = data["cash"].values[0]
+        balance.power = data["power"].values[0]
+        balance.max_power_short = data["max_power_short"].values[0]
+        balance.net_cash_power = data["net_cash_power"].values[0]
         return balance
 
-    def get_position(self):
-        """获取持仓"""
-        return
+    def get_broker_position(self, security:Stock, direction:Direction)->PositionData:
+        """获取券商持仓"""
+        positions = self.get_all_broker_positions()
+        for position_data in positions:
+            if position_data.security==security and position_data.direction==direction:
+                return position_data
+        return None
+
+    def get_all_broker_positions(self)->List[PositionData]:
+        """获取券商所有持仓"""
+        ret, data = self.trd_ctx.position_list_query(trd_env=self.futu_trd_env)
+        positions = []
+        for idx, row in data.iterrows():
+            position_data = PositionData(
+                security=Stock(code=row["code"], stock_name=row["stock_name"]), # TODO: lot_size is not available
+                direction = Direction.LONG if row["position_side"] == "LONG" else Direction.SHORT,
+                holding_price = row["cost_price"],
+                quantity = row["qty"],
+                update_time = datetime.now(),
+            )
+            positions.append(position_data)
+        return positions
 
 
 
@@ -346,4 +383,6 @@ def convert_orderstatus_futu2qt(status:OrderStatus)->QTOrderStatus:
         return QTOrderStatus.FAILED
     else:
         raise ValueError(f"订单状态{status}不在程序处理范围内")
+
+
 

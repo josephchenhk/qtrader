@@ -5,13 +5,16 @@
 # @FileName: security.py
 # @Software: PyCharm
 
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
 class Stock:
     """股票的基本属性"""
-    def __init__(self, code:str, lot_size:int, stock_name:str):
-        self.code = code
-        self.lot_size = lot_size
-        self.stock_name = stock_name
 
-    def __str__(self):
-        return f"Stock[{self.code}, {self.stock_name}, {self.lot_size}]"
-    __repr__=__str__
+    code:str
+    stock_name:str
+    lot_size:int = 1
+
+    def __eq__(self, other):
+        return (self.code==other.code) and (self.stock_name==other.stock_name)
+

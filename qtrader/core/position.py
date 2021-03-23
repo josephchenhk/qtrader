@@ -4,30 +4,24 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: position.py
 # @Software: PyCharm
+from dataclasses import dataclass
 from datetime import datetime
 
 from qtrader.core.constants import Direction, Offset
 from qtrader.core.security import Stock
 
-
+@dataclass
 class PositionData:
-
     """Position record"""
 
-    def __init__(self, security:Stock, direction:Direction, holding_price:float, quantity:int, update_time:datetime):
-        self.security = security
-        self.direction = direction
-        self.holding_price = holding_price
-        self.quantity = quantity
-        self.update_time = update_time
-
-    def __str__(self):
-        return f"PositionData[{self.security}, {self.direction}, {self.holding_price}, {self.quantity}, {self.update_time}]"
-    __repr__=__str__
+    security: Stock
+    direction: Direction
+    holding_price: float
+    quantity: int
+    update_time: datetime
 
 
 class Position:
-
     """记录持仓"""
 
     def __init__(self, holdings={}):
@@ -76,3 +70,12 @@ class Position:
 
     def get_position(self, security:Stock, direction:Direction)->PositionData:
         return self.holdings[security][direction]
+
+    def get_all_positions(self):
+        positions = []
+        for security in self.holdings:
+            if Direction.LONG in self.holdings[security]:
+                positions.append(self.holdings[security][Direction.LONG])
+            elif Direction.SHORT in self.holdings[security]:
+                positions.append(self.holdings[security][Direction.SHORT])
+        return positions

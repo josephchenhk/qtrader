@@ -8,9 +8,8 @@
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import Direction, Offset
 from qtrader.core.deal import Deal
-from qtrader.core.order import Order
 from qtrader.core.position import Position, PositionData
-from qtrader.gateways import BacktestGateway
+from qtrader.gateways import BaseGateway
 from qtrader.gateways.backtest import fees
 
 
@@ -18,7 +17,7 @@ class Portfolio:
 
     """投资组合"""
 
-    def __init__(self, account_balance:AccountBalance, position:Position, market:BacktestGateway):
+    def __init__(self, account_balance:AccountBalance, position:Position, market:BaseGateway):
         self.account_balance = account_balance
         self.position = position
         self.market = market
@@ -32,16 +31,16 @@ class Portfolio:
         filled_time = deal.updated_time
         fee = fees({"price": price, "size": quantity})[-1]
         # update balance
-        self.account_balance.total -= fee
+        self.account_balance.cash -= fee
         if direction==Direction.LONG:
-            self.account_balance.total -= price*quantity
+            self.account_balance.cash -= price*quantity
             if offset==Offset.CLOSE: # close a short position, need to pay short interest
                 short_position = self.position.holdings[security][Direction.SHORT]
                 short_interest = short_position.holding_price * short_position.quantity * (
-                    filled_time - short_position.update_time).days / 365 * BacktestGateway.SHORT_INTEREST_RATE
-                self.account_balance.total -= short_interest
+                    filled_time - short_position.update_time).days / 365 * self.market.SHORT_INTEREST_RATE
+                self.account_balance.cash -= short_interest
         elif direction==Direction.SHORT:
-            self.account_balance.total += price * quantity
+            self.account_balance.cash += price * quantity
         # update position
         position_data = PositionData(
             security=security,
@@ -57,7 +56,7 @@ class Portfolio:
 
     @property
     def value(self):
-        v = self.account_balance.total
+        v = self.account_balance.cash
         for security in self.position.holdings:
             cur_price = self.market.get_recent_bar(security=security, cur_datetime=self.market.market_datetime).close
             for direction in self.position.holdings[security]:

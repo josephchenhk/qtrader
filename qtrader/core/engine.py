@@ -8,10 +8,12 @@
 from datetime import datetime
 from typing import List, Union
 
+from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import Direction, Offset, OrderType
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.portfolio import Portfolio
+from qtrader.core.position import PositionData
 from qtrader.core.security import Stock
 from qtrader.core.data import Bar, _get_full_data
 from qtrader.core.logger import logger
@@ -96,16 +98,26 @@ class Engine:
         """根据orderid找出成交的deal"""
         return self.market.find_deals_with_orderid(orderid)
 
-    def get_balance(self):
+    def get_balance(self)->AccountBalance:
         """balance"""
-        try:
-            self.portfolio.account_balance = self.market.get_balance()
-        except Exception as e:
-            self.log.warn(f"Can not update balance from market: {e}")
-        finally:
-            return self.account_balance
+        return self.portfolio.account_balance
 
+    def get_broker_balance(self)->AccountBalance:
+        """broker balance"""
+        return self.market.get_broker_balance()
 
-    def get_position(self):
+    def get_position(self, security:Stock, direction:Direction)->PositionData:
         """position"""
-        return self.market.get_position()
+        return self.portfolio.position.get_position(security, direction)
+
+    def get_broker_position(self, security:Stock, direction:Direction)->PositionData:
+        """broker position"""
+        return self.market.get_broker_position(security, direction)
+
+    def get_all_positions(self)->List[PositionData]:
+        """all positions"""
+        return self.portfolio.position.get_all_positions()
+
+    def get_all_broker_positions(self)->List[PositionData]:
+        """all broker positions"""
+        return self.market.get_all_broker_positions()
