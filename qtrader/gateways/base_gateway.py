@@ -9,6 +9,7 @@ from typing import List
 
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import Direction
+from qtrader.core.data import Quote, OrderBook
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.position import PositionData
@@ -76,3 +77,11 @@ class BaseGateway(ABC):
     def get_all_broker_positions(self)->List[PositionData]:
         """获取券商所有持仓"""
         raise NotImplementedError("get_all_broker_positions has not been implemented")
+
+    def get_quote(self, security:Stock)->Quote:
+        """获取报价"""
+        raise NotImplementedError("get_quote has not been implemented")
+
+    def get_orderbook(self, security:Stock)->OrderBook:
+        """获取订单簿"""
+        raise NotImplementedError("get_orderbook has not been implemented")

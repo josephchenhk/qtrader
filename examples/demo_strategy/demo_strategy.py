@@ -28,46 +28,47 @@ class DemoStrategy(BaseStrategy):
         pass
 
     def on_bar(self, cur_data:Dict[Stock, Bar]):
-        self.engine.log.info(f"当前bar: {cur_data}")
 
+        self.engine.log.info("-"*30 + "进入on_bar" + "-"*30)
+
+        # check balance
+        balance = self.engine.get_balance()
+        broker_balance = self.engine.get_broker_balance()
+        self.engine.log.info(f"{balance}, {broker_balance}")
+
+        # check position
+        positions = self.engine.get_all_positions()
+        broker_positions = self.engine.get_all_broker_positions()
+        self.engine.log.info(f"{positions}, {broker_positions}")
+
+        # send orders
         for security in cur_data:
-            ob = self.engine.get_orderbook(security)
-            quote = self.engine.get_quote(security)
-            self.engine.log.info(quote)
-            self.engine.log.info(ob)
-        self.engine.log.info("-"*60)
 
-        # # check balance
-        # balance = self.engine.get_balance()
-        # broker_balance = self.engine.get_broker_balance()
-        # print(balance, broker_balance)
-        #
-        # # check position
-        # positions = self.engine.get_all_positions()
-        # broker_positions = self.engine.get_all_broker_positions()
-        # print(positions, broker_positions)
-        #
-        # # send orders
-        # for security in cur_data:
-        #     bar = cur_data[security]
-        #     orderid = self.engine.send_order(
-        #         security=security,
-        #         price=bar.close,
-        #         quantity=security.lot_size,
-        #         direction=Direction.LONG,
-        #         offset=Offset.OPEN,
-        #         order_type=OrderType.LIMIT
-        #     )
-        #
-        #     sleep(1)
-        #     order = self.engine.get_order(orderid)
-        #     self.engine.log.info(f"发出订单{order}")
-        #
-        #     deals = self.engine.find_deals_with_orderid(orderid)
-        #     for deal in deals:
-        #         self.portfolio.update(deal)
-        #
-        #     if orderid:
-        #         self.engine.cancel_order(orderid)
-        #         self.engine.log.info(f"取消订单{order}")
+            orderbook = self.engine.get_orderbook(security)
+            quote = self.engine.get_quote(security)
+            bar = cur_data[security]
+            self.engine.log.info(quote)
+            self.engine.log.info(orderbook)
+            self.engine.log.info(bar)
+
+            orderid = self.engine.send_order(
+                security=security,
+                price=bar.close,
+                quantity=security.lot_size,
+                direction=Direction.LONG,
+                offset=Offset.OPEN,
+                order_type=OrderType.LIMIT
+            )
+
+            sleep(1)
+            order = self.engine.get_order(orderid)
+            self.engine.log.info(f"发出订单{order}")
+
+            deals = self.engine.find_deals_with_orderid(orderid)
+            for deal in deals:
+                self.portfolio.update(deal)
+
+            if orderid:
+                self.engine.cancel_order(orderid)
+                self.engine.log.info(f"取消订单{order}")
 

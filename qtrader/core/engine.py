@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import List, Union
 
 from qtrader.core.balance import AccountBalance
-from qtrader.core.constants import Direction, Offset, OrderType
+from qtrader.core.constants import Direction, Offset, OrderType, TradeMode
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.portfolio import Portfolio
@@ -123,9 +123,9 @@ class Engine:
         return self.market.get_all_broker_positions()
 
     def get_quote(self, security:Stock)->Quote:
-        """获取最新quote"""
-        return self.market.quote.get(security)
+        """获取最新quote (回测模式下暂不支持）"""
+        return self.market.get_quote(security)
 
     def get_orderbook(self, security:Stock)->OrderBook:
-        """获取最新orderbook"""
-        return self.market.orderbook.get(security)
+        """获取最新orderbook （回测模式下暂不支持）"""
+        return self.market.get_orderbook(security)

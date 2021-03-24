@@ -13,7 +13,7 @@ from dateutil.relativedelta import relativedelta
 
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction
-from qtrader.core.data import _get_full_data, _get_data_iterator
+from qtrader.core.data import _get_full_data, _get_data_iterator, Quote, OrderBook
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.position import PositionData
@@ -226,6 +226,13 @@ class BacktestGateway(BaseGateway):
         """获取券商所有持仓 (回测此接口不可用)"""
         return None
 
+    def get_quote(self, security: Stock) -> Quote:
+        """获取报价 (回测此接口不可用)"""
+        return None
+
+    def get_orderbook(self, security: Stock) -> OrderBook:
+        """获取订单簿 (回测此接口不可用)"""
+        return None
 
 def fees(*trades:Dict)->float:
     """

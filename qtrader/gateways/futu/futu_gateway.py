@@ -352,6 +352,14 @@ class FutuGateway(BaseGateway):
             positions.append(position_data)
         return positions
 
+    def get_quote(self, security: Stock) -> Quote:
+        """获取报价"""
+        return self.quote.get(security)
+
+    def get_orderbook(self, security: Stock) -> OrderBook:
+        """获取订单簿"""
+        return self.orderbook.get(security)
+
 
 
 def fees(*trades:Dict)->float:
