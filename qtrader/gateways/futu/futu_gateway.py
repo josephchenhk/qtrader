@@ -18,10 +18,11 @@ from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.position import Position, PositionData
 from qtrader.core.security import Stock
-from qtrader.core.data import Bar
+from qtrader.core.data import Bar, OrderBook, Quote
 from qtrader.core.utility import Time, try_parsing_datetime
 from qtrader.config import FUTU
 from qtrader.gateways import BaseGateway
+
 
 
 class FutuGateway(BaseGateway):
@@ -48,18 +49,54 @@ class FutuGateway(BaseGateway):
 
         self.trade_mode = None
 
+        self.quote_ctx = OpenQuoteContext(host=FUTU["host"], port=FUTU["port"])
+        self.connect_quote()
+        self.subscribe()
+
         self.trd_ctx = OpenHKTradeContext(host=FUTU["host"], port=FUTU["port"])
         self.connect_trade()
-
-        self.quote_ctx = OpenQuoteContext(host=FUTU["host"], port=FUTU["port"])
-        self.subscribe()
 
     def close(self):
         self.quote_ctx.close() # 关闭当条连接，FutuOpenD会在1分钟后自动取消相应股票相应类型的订阅
         self.trd_ctx.close()   # 关闭交易通道
 
+    def connect_quote(self):
+        """
+        行情需要处理报价和订单簿
+        """
+        class QuoteHandler(StockQuoteHandlerBase):
+            gateway = self
+
+            def on_recv_rsp(self, rsp_str):
+                ret_code, content = super(QuoteHandler, self).on_recv_rsp(
+                    rsp_str
+                )
+                if ret_code != RET_OK:
+                    return RET_ERROR, content
+                self.gateway.process_quote(content)
+                return RET_OK, content
+
+        class OrderBookHandler(OrderBookHandlerBase):
+            gateway = self
+
+            def on_recv_rsp(self, rsp_str):
+                ret_code, content = super(OrderBookHandler, self).on_recv_rsp(
+                    rsp_str
+                )
+                if ret_code != RET_OK:
+                    return RET_ERROR, content
+                self.gateway.process_orderbook(content)
+                return RET_OK, content
+
+        self.quote_ctx.set_handler(QuoteHandler())
+        self.quote_ctx.set_handler(OrderBookHandler())
+        self.quote_ctx.start()
+        print("行情接口连接成功")
+
     def connect_trade(self):
-        """交易需要处理订单和成交"""
+        """
+        交易需要处理订单和成交
+        """
         class TradeOrderHandler(TradeOrderHandlerBase):
             gateway = self
             def on_recv_rsp(self, rsp_str):
@@ -85,6 +122,58 @@ class FutuGateway(BaseGateway):
         self.trd_ctx.set_handler(TradeOrderHandler())
         self.trd_ctx.set_handler(TradeDealHandler())
         print(self.trd_ctx.unlock_trade(FUTU["pwd_unlock"]))
+        self.trd_ctx.start()
+        print("交易接口连接成功")
+
+    def process_quote(self, content:pd.DataFrame):
+        """更新报价的状态"""
+        stock = self.get_stock(code=content['code'].values[0])
+        if stock is None:
+            return
+        svr_datetime_str = content["data_date"].values[0] + " " + content["data_time"].values[0]
+        svr_datetime = try_parsing_datetime(svr_datetime_str)
+        quote = Quote(
+            security = stock,
+            exchange = stock.exchange,
+            datetime = svr_datetime,
+            last_price = content['last_price'].values[0],
+            open_price = content['open_price'].values[0],
+            high_price = content['high_price'].values[0],
+            low_price = content['last_price'].values[0],
+            prev_close_price = content['prev_close_price'].values[0],
+            volume = content['volume'].values[0],
+            turnover = content['turnover'].values[0],
+            turnover_rate = content['turnover_rate'].values[0],
+            amplitude = content['amplitude'].values[0],
+            suspension = content['suspension'].values[0],
+            price_spread = content['price_spread'].values[0],
+            sec_status = content['sec_status'].values[0],
+        )
+        self.quote.put(stock, quote)
+
+    def process_orderbook(self, content:Dict):
+        """更新订单簿的状态"""
+        stock = self.get_stock(code=content['code'])
+        if stock is None:
+            return
+        svr_datetime = max(
+            try_parsing_datetime(content['svr_recv_time_bid']),
+            try_parsing_datetime(content['svr_recv_time_ask']),
+        )
+        orderbook = OrderBook(
+            security=stock,
+            exchange=stock.exchange,
+            datetime=svr_datetime
+        )
+        for i, bid in enumerate(content['Bid']):
+            setattr(orderbook, f"bid_price_{i+1}", bid[0])
+            setattr(orderbook, f"bid_volume_{i+1}", bid[1])
+            setattr(orderbook, f"bid_num_{i+1}", bid[2])
+        for i, ask in enumerate(content['Ask']):
+            setattr(orderbook, f"ask_price_{i+1}", ask[0])
+            setattr(orderbook, f"ask_volume_{i+1}", ask[1])
+            setattr(orderbook, f"ask_num_{i+1}", ask[2])
+        self.orderbook.put(stock, orderbook)
 
     def process_order(self, content:pd.DataFrame):
         """更新订单的状态"""
@@ -140,10 +229,10 @@ class FutuGateway(BaseGateway):
     def subscribe(self):
         # TODO: 暂时写死了订阅1分钟k线
         codes = [s.code for s in self.securities]
-        ret_sub, err_message = self.quote_ctx.subscribe(codes, [SubType.K_1M], subscribe_push=False)
-        # 先订阅K 线类型。订阅成功后FutuOpenD将持续收到服务器的推送，False代表暂时不需要推送给脚本
+        ret_sub, err_message = self.quote_ctx.subscribe(codes, [SubType.K_1M, SubType.QUOTE, SubType.ORDER_BOOK], subscribe_push=True)
+        # 订阅成功后FutuOpenD将持续收到服务器的推送，False代表暂时不需要推送给脚本
         if ret_sub == RET_OK:  # 订阅成功
-            print(f"成功订阅1M k线: {self.securities}")
+            print(f"成功订阅1min K线、报价和订单簿: {self.securities}")
         else:
             print(f"订阅失败: {err_message}")
 
@@ -154,7 +243,6 @@ class FutuGateway(BaseGateway):
         :param cur_datetime:
         :return:
         """
-        return True
         # TODO: 先判断是否交易日
         cur_time = Time(hour=cur_datetime.hour, minute=cur_datetime.minute, second=cur_datetime.second)
         return (self.TRADING_HOURS_AM[0]<=cur_time<=self.TRADING_HOURS_AM[1]) or (self.TRADING_HOURS_PM[0]<=cur_time<=self.TRADING_HOURS_PM[1])
@@ -190,6 +278,13 @@ class FutuGateway(BaseGateway):
             return bars[0]
         else:
             return bars
+
+    def get_stock(self, code:str)->Stock:
+        """根据股票代号，找到对应的股票"""
+        for stock in self.securities:
+            if stock.code==code:
+                return stock
+        return None
 
     def place_order(self, order:Order):
         """提交订单"""

@@ -110,7 +110,9 @@ def try_parsing_datetime(text:str):
             return datetime.strptime(text, fmt)
         except ValueError:
             pass
-    raise ValueError('no valid date format found')
+    # raise ValueError(f"{text} is not a valid date format!")
+    # 如果不能解析时间文本（有可能为空），则返回当前本机系统时间
+    return datetime.now()
 
 if __name__=="__main__":
     blockdict = BlockingDict()

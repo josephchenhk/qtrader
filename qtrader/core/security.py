@@ -7,6 +7,9 @@
 
 from dataclasses import dataclass
 
+from qtrader.core.constants import Exchange
+
+
 @dataclass(frozen=True)
 class Stock:
     """股票的基本属性"""
@@ -14,6 +17,7 @@ class Stock:
     code:str
     stock_name:str
     lot_size:int = 1
+    exchange:Exchange = Exchange.SEHK # 默认港股
 
     def __eq__(self, other):
         return (self.code==other.code) and (self.stock_name==other.stock_name)

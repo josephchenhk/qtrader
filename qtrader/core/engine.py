@@ -15,7 +15,7 @@ from qtrader.core.order import Order
 from qtrader.core.portfolio import Portfolio
 from qtrader.core.position import PositionData
 from qtrader.core.security import Stock
-from qtrader.core.data import Bar, _get_full_data
+from qtrader.core.data import Bar, _get_full_data, OrderBook, Quote
 from qtrader.core.logger import logger
 
 
@@ -121,3 +121,11 @@ class Engine:
     def get_all_broker_positions(self)->List[PositionData]:
         """all broker positions"""
         return self.market.get_all_broker_positions()
+
+    def get_quote(self, security:Stock)->Quote:
+        """获取最新quote"""
+        return self.market.quote.get(security)
+
+    def get_orderbook(self, security:Stock)->OrderBook:
+        """获取最新orderbook"""
+        return self.market.orderbook.get(security)

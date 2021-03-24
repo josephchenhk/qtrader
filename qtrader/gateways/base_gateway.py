@@ -27,6 +27,8 @@ class BaseGateway(ABC):
         self.securities = securities
         self.orders = BlockingDict()
         self.deals = BlockingDict()
+        self.quote = BlockingDict()
+        self.orderbook = BlockingDict()
 
     def close(self):
         """与实盘对应的功能，在回测gateway里无需实现任何功能"""

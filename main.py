@@ -25,16 +25,17 @@ if __name__=="__main__":
     stock = Stock(code="HK.01157", lot_size=200, stock_name="中联重科")
     stock_list = [stock]
 
-    market = BacktestGateway(
-        securities=stock_list,
-        start=datetime(2021, 3, 15, 9, 30, 0, 0),
-        end=datetime(2021, 3, 17, 16, 0, 0, 0),
-    )
-
-    # market = FutuGateway(
+    # market = BacktestGateway(
     #     securities=stock_list,
-    #     end=datetime(2021, 3, 23, 16, 0, 0, 0),
+    #     start=datetime(2021, 3, 15, 9, 30, 0, 0),
+    #     end=datetime(2021, 3, 17, 16, 0, 0, 0),
     # )
+
+    market = FutuGateway(
+        securities=stock_list,
+        end=datetime(2021, 3, 24, 16, 0, 0, 0),
+    )
+    market.TIME_STEP = 3 # 设置时间步长
 
     # 头寸管理
     position = Position()
@@ -53,7 +54,7 @@ if __name__=="__main__":
 
     # 事件引擎启动
     recorder = BarEventEngineRecorder()
-    event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.BACKTEST)
+    event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.SIMULATE)
     event_engine.run()
 
     # plot_pnl(event_engine.recorder.datetime, event_engine.recorder.portfolio_value)

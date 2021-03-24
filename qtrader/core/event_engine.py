@@ -103,7 +103,11 @@ class BarEventEngine:
                 self.recorder.write_record(field, value)
 
             # 更新事件循环时间戳
-            cur_datetime += relativedelta(seconds=time_step)
+            if self.trade_mode == TradeMode.BACKTEST:
+                cur_datetime += relativedelta(seconds=time_step)
+            else:
+                sleep(time_step)
+                cur_datetime = datetime.now()
 
         market.close()
         engine.log.info("到达预期结束时间，策略停止")
