@@ -156,3 +156,9 @@ qtrader/config/config-private.py
 
 # strategies
 examples/pairtrade_strategy/*
+
+# data
+examples/data/clickhouse/*
+
+# plugins
+qtrader/plugins/clickhouse/*
