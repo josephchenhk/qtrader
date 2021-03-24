@@ -66,7 +66,6 @@ class FutuGateway(BaseGateway):
         """
         class QuoteHandler(StockQuoteHandlerBase):
             gateway = self
-
             def on_recv_rsp(self, rsp_str):
                 ret_code, content = super(QuoteHandler, self).on_recv_rsp(
                     rsp_str
@@ -78,7 +77,6 @@ class FutuGateway(BaseGateway):
 
         class OrderBookHandler(OrderBookHandlerBase):
             gateway = self
-
             def on_recv_rsp(self, rsp_str):
                 ret_code, content = super(OrderBookHandler, self).on_recv_rsp(
                     rsp_str
@@ -345,7 +343,7 @@ class FutuGateway(BaseGateway):
         positions = []
         for idx, row in data.iterrows():
             position_data = PositionData(
-                security=Stock(code=row["code"], stock_name=row["stock_name"]), # TODO: lot_size is not available
+                security=self.get_stock(code=row["code"]),
                 direction = Direction.LONG if row["position_side"] == "LONG" else Direction.SHORT,
                 holding_price = row["cost_price"],
                 quantity = row["qty"],
