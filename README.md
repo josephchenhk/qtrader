@@ -62,7 +62,7 @@ class MyStrategy(BaseStrategy):
 QTrader provides a module named `BacktestRecorder` to record variables during backtesting. By default, it saves `datetime` 
 and `portfolio_value` every timestep. 
 
-If you want to record additional variables, you need to write a method called `get_var` in your strategy:
+If you want to record additional variables (let's say it is called `var`), you need to write a method called `get_var` in your strategy:
 
 ```python
 from qtrader.core.strategy import BaseStrategy
@@ -73,7 +73,8 @@ class MyStrategy(BaseStrategy):
         return XXX
 ```
 
-And initialize your `BacktestRecorder` with the same vairable `var=[]`:
+And initialize your `BacktestRecorder` with the same vairable `var=[]`（if you want to record every timestep） or `var=None`
+（if you want to record only the last updated value）:
 
 ```python
 recorder = BacktestRecorder(var=[])
@@ -81,7 +82,7 @@ recorder = BacktestRecorder(var=[])
     
 ## Run a backtest
 
-Here we go! Here is a sample of running a backtest in QTrader:
+Now we are ready to run a backtest. Here is a sample of running a backtest in QTrader:
 
 ```python
 # prepare stocks

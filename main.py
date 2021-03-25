@@ -22,8 +22,9 @@ from examples.demo_strategy import DemoStrategy
 
 if __name__=="__main__":
 
-    stock = Stock(code="HK.01157", lot_size=200, stock_name="中联重科")
-    stock_list = [stock]
+    stock_list = [
+        Stock(code="HK.01157", lot_size=200, stock_name="中联重科"),
+    ]
 
     market = BacktestGateway(
         securities=stock_list,
@@ -33,8 +34,9 @@ if __name__=="__main__":
 
     # market = FutuGateway(
     #     securities=stock_list,
-    #     end=datetime(2021, 3, 24, 16, 0, 0, 0),
+    #     end=datetime(2021, 3, 25, 16, 0, 0, 0),
     # )
+
     market.TIME_STEP = 60 # 设置时间步长
 
     # 头寸管理
@@ -57,5 +59,5 @@ if __name__=="__main__":
     event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.BACKTEST)
     event_engine.run()
 
-    # plot_pnl(event_engine.recorder.datetime, event_engine.recorder.portfolio_value)
-    print("Done.")
+    # plot_pnl(recorder.datetime, recorder.portfolio_value)
+    engine.log.info("程序正常退出")

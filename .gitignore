@@ -150,12 +150,14 @@ qtrader/log/*
 
 # main
 main-tmp.py
+main_momentum.py
 
 # config
 qtrader/config/config-private.py
 
 # strategies
 examples/pairtrade_strategy/*
+examples/momentum_strategy/*
 
 # data
 examples/data/clickhouse/*

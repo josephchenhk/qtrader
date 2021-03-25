@@ -25,10 +25,23 @@ class Engine:
 
     def __init__(self, portfolio:Portfolio):
         self.portfolio = portfolio
-        self.position = portfolio.position
-        self.account_balance = portfolio.account_balance
         self.market = portfolio.market
         self.log = logger
+
+    def sync_broker_balance(self):
+        """同步券商资金"""
+        broker_balance = self.get_broker_balance()
+        if broker_balance is None:
+            return
+        self.portfolio.account_balance = broker_balance
+
+    def sync_broker_position(self):
+        """同步券商持仓"""
+        all_broker_positions = self.get_all_broker_positions()
+        if all_broker_positions is None:
+            return
+        for broker_position in all_broker_positions:
+            self.portfolio.position.update(position_data=broker_position, offset=Offset.OPEN)
 
     def send_order(self,
         security:Stock,

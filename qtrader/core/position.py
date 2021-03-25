@@ -69,6 +69,10 @@ class Position:
             self.holdings.pop(security, None)
 
     def get_position(self, security:Stock, direction:Direction)->PositionData:
+        if security not in self.holdings:
+            return None
+        elif direction not in self.holdings[security]:
+            return None
         return self.holdings[security][direction]
 
     def get_all_positions(self):

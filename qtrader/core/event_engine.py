@@ -19,20 +19,28 @@ class BarEventEngineRecorder:
     """记录bar事件过程的变量"""
 
     def __init__(self, **kwargs):
-        self.recorded_fields = ["datetime", "portfolio_value"]
+        self.recorded_methods = {"datetime": "append", "portfolio_value": "append"}
         self.datetime = []
         self.portfolio_value = []
-        for k,v in kwargs:
-            setattr(self, k, [])
-            self.recorded_fields.append(str(k))
+        for k,v in kwargs.items():
+            if v is None:
+                self.recorded_methods[str(k)] = "override"
+            elif isinstance(v, list) and len(v)==0:
+                self.recorded_methods[str(k)] = "append"
+            else:
+                raise ValueError(f"BarEventEngineRecorder 的输入参数{k}的类型为{type(v)}, 只有[]或None是合法的输入")
+            setattr(self, k, v)
 
     def get_recorded_fields(self):
-        return self.recorded_fields
+        return list(self.recorded_methods.keys())
 
     def write_record(self, field, value):
         record = getattr(self, field, None)
-        if record is not None:
+        if self.recorded_methods[field]=="append":
             record.append(value)
+        elif self.recorded_methods[field]=="override":
+            setattr(self, field, value)
+
 
 
 class BarEventEngine:
@@ -51,6 +59,13 @@ class BarEventEngine:
         self.trade_mode = trade_mode
         strategy.engine.market.set_trade_mode(trade_mode)
 
+        # 确定模式之后，尝试同步券商的资金和持仓信息（回测模式下不会有任何变化）
+        strategy.engine.sync_broker_balance()
+        strategy.engine.sync_broker_position()
+        # 输出初始账户资金和持仓
+        strategy.engine.log.info(strategy.engine.get_balance())
+        strategy.engine.log.info(strategy.engine.get_all_positions())
+
         if start is None:
             self.start = strategy.engine.market.start
         if end is None:
@@ -59,7 +74,7 @@ class BarEventEngine:
     @timeit
     def run(self):
         engine = self.strategy.engine
-        market = engine.market
+        market = self.strategy.engine.market
         securities = self.strategy.securities
 
         # 开始事件循环（若为回测，则回放历史数据）
@@ -80,8 +95,8 @@ class BarEventEngine:
                     engine.log.info(f"当前时间{cur_datetime}非交易时间，跳到{sorted_next_trading_datetime[0][1]}")
                     cur_datetime = sorted_next_trading_datetime[0][1]
                     continue
-                elif self.trade_mode==TradeMode.LIVETRADE:
-                    sleep(60)
+                elif self.trade_mode in (TradeMode.LIVETRADE, TradeMode.SIMULATE):
+                    sleep(time_step)
                     continue
 
             # 获取每只股票的最新bar数据
@@ -105,7 +120,7 @@ class BarEventEngine:
             # 更新事件循环时间戳
             if self.trade_mode == TradeMode.BACKTEST:
                 cur_datetime += relativedelta(seconds=time_step)
-            else:
+            elif self.trade_mode in (TradeMode.LIVETRADE, TradeMode.SIMULATE):
                 sleep(time_step)
                 cur_datetime = datetime.now()
 

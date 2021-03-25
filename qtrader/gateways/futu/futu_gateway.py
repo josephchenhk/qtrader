@@ -232,7 +232,7 @@ class FutuGateway(BaseGateway):
         if ret_sub == RET_OK:  # 订阅成功
             print(f"成功订阅1min K线、报价和订单簿: {self.securities}")
         else:
-            print(f"订阅失败: {err_message}")
+            raise ValueError(f"订阅失败: {err_message}")
 
     def is_trading_time(self, cur_datetime:datetime)->bool:
         """
@@ -342,8 +342,11 @@ class FutuGateway(BaseGateway):
             return
         positions = []
         for idx, row in data.iterrows():
+            security = self.get_stock(code=row["code"])
+            if security is None:
+                security = Stock(code=row["code"], stock_name=row["stock_name"])
             position_data = PositionData(
-                security=self.get_stock(code=row["code"]),
+                security=security,
                 direction = Direction.LONG if row["position_side"] == "LONG" else Direction.SHORT,
                 holding_price = row["cost_price"],
                 quantity = row["qty"],

@@ -60,7 +60,7 @@ class DemoStrategy(BaseStrategy):
                 order_type=OrderType.LIMIT
             )
 
-            sleep(1)
+            # sleep(1)
             order = self.engine.get_order(orderid)
             self.engine.log.info(f"发出订单{order}")
 
