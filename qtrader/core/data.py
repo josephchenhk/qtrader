@@ -18,7 +18,9 @@ from qtrader.config import DATA_PATH
 DATA_FILES = [f for f in os.listdir(f"{DATA_PATH}/k_line/K_1M") if ".csv" in f]
 
 class Bar:
-    """Bar数据的基本属性"""
+    """
+    Bar数据的基本属性
+    """
     def __init__(self,
                  datetime:datetime,
                  security:Stock,

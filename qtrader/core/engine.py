@@ -69,7 +69,7 @@ class Engine:
         """取消订单"""
         self.market.cancel_order(orderid)
 
-    def get_order(self, orderid):
+    def get_order(self, orderid)->Order:
         """获取订单的状态"""
         return self.market.get_order(orderid)
 

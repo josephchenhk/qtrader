@@ -12,7 +12,9 @@ from qtrader.core.security import Stock
 
 @dataclass
 class PositionData:
-    """Position record"""
+    """
+    Position record
+    """
 
     security: Stock
     direction: Direction
@@ -22,7 +24,9 @@ class PositionData:
 
 
 class Position:
-    """记录持仓"""
+    """
+    记录持仓
+    """
 
     def __init__(self, holdings={}):
         self.holdings = holdings

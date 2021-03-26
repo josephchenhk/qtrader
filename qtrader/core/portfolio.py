@@ -14,8 +14,9 @@ from qtrader.gateways.backtest import fees
 
 
 class Portfolio:
-
-    """投资组合"""
+    """
+    投资组合
+    """
 
     def __init__(self, account_balance:AccountBalance, position:Position, market:BaseGateway):
         self.account_balance = account_balance

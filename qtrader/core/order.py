@@ -11,7 +11,9 @@ from qtrader.core.constants import Direction, Offset, OrderType, OrderStatus
 from qtrader.core.security import Stock
 
 class Order:
-    """订单"""
+    """
+    订单
+    """
 
     def __init__(self,
                  security: Stock,

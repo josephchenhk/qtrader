@@ -14,7 +14,6 @@ class TradeMode(Enum):
     LIVETRADE = "实盘"
     SIMULATE = "仿真"
 
-
 class Direction(Enum):
     """
     Direction of order/trade/position.

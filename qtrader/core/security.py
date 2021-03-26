@@ -12,7 +12,9 @@ from qtrader.core.constants import Exchange
 
 @dataclass(frozen=True)
 class Stock:
-    """股票的基本属性"""
+    """
+    股票的基本属性
+    """
 
     code:str
     stock_name:str

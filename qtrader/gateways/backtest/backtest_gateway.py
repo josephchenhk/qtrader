@@ -13,7 +13,7 @@ from dateutil.relativedelta import relativedelta
 
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction
-from qtrader.core.data import _get_full_data, _get_data_iterator, Quote, OrderBook
+from qtrader.core.data import _get_full_data, _get_data_iterator, Quote, OrderBook, Bar
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.position import PositionData
@@ -139,7 +139,7 @@ class BacktestGateway(BaseGateway):
             next_trading_daytime = next_time
         return next_trading_daytime
 
-    def get_recent_bar(self, security:Stock, cur_datetime:datetime):
+    def get_recent_bar(self, security:Stock, cur_datetime:datetime)->Bar:
         """
         获取最接近当前时间的数据点
 
@@ -180,7 +180,7 @@ class BacktestGateway(BaseGateway):
         self.market_datetime = cur_datetime
         return self.prev_cache[security]
 
-    def place_order(self, order:Order):
+    def place_order(self, order:Order)->str:
         """最简单的处理，假设全部成交"""
         order.filled_time = self.market_datetime
         order.filled_quantity = order.quantity
@@ -226,11 +226,11 @@ class BacktestGateway(BaseGateway):
         """获取券商所有持仓 (回测此接口不可用)"""
         return None
 
-    def get_quote(self, security: Stock) -> Quote:
+    def get_quote(self, security: Stock)->Quote:
         """获取报价 (回测此接口不可用)"""
         return None
 
-    def get_orderbook(self, security: Stock) -> OrderBook:
+    def get_orderbook(self, security: Stock)->OrderBook:
         """获取订单簿 (回测此接口不可用)"""
         return None
 

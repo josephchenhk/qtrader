@@ -10,7 +10,10 @@ from qtrader.core.portfolio import Portfolio
 
 
 class BaseStrategy:
-    """To write a strategy, override init_strategy and on_bar methods"""
+    """
+    策略基类
+    To write a strategy, override init_strategy and on_bar methods
+    """
 
     securities = []
 

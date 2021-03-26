@@ -44,7 +44,9 @@ class BarEventEngineRecorder:
 
 
 class BarEventEngine:
-    """Bar事件框架"""
+    """
+    Bar事件框架
+    """
 
     def __init__(self,
                  strategy:BaseStrategy,
