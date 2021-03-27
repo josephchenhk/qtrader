@@ -6,7 +6,6 @@
 # @Software: PyCharm
 
 import uuid
-import math
 from datetime import datetime
 from typing import List, Dict, Iterator
 from dateutil.relativedelta import relativedelta
@@ -20,6 +19,8 @@ from qtrader.core.position import PositionData
 from qtrader.core.security import Stock
 from qtrader.core.utility import Time
 from qtrader.gateways import BaseGateway
+from qtrader.gateways.base_gateway import BaseFees
+from qtrader.gateways.futu.futu_gateway import FutuHKEquityFees
 
 
 class BacktestGateway(BaseGateway):
@@ -38,7 +39,8 @@ class BacktestGateway(BaseGateway):
                  securities:List[Stock],
                  start:datetime,
                  end:datetime,
-                 dtype:List[str]=["open", "high", "low", "close", "volume"]
+                 dtype:List[str]=["open", "high", "low", "close", "volume"],
+                 fees:BaseFees=FutuHKEquityFees, # 默认是港股富途收费
         )->Dict[Stock, Iterator]:
         """
         历史数据分派器
@@ -50,6 +52,7 @@ class BacktestGateway(BaseGateway):
         :return:
         """
         super().__init__(securities)
+        self.fees = fees
         data_iterators = {}
         trading_days = {}
         for security in securities:
@@ -233,100 +236,3 @@ class BacktestGateway(BaseGateway):
     def get_orderbook(self, security: Stock)->OrderBook:
         """获取订单簿 (回测此接口不可用)"""
         return None
-
-def fees(*trades:Dict)->float:
-    """
-    港股融资融券（8332）套餐一（适合一般交易者）
-    融资利率: 年利率6.8%
-
-    佣金: 0.03%， 最低3港元
-    平台使用费: 15港元/笔
-
-    交易系统使用费（香港交易所）: 每笔成交0.50港元
-    交收费（香港结算所）: 0.002%， 最低2港元，最高100港元
-    印花税（香港政府）: 0.1%*成交金额，不足1港元作1港元计，窝轮、牛熊证此费用不收取
-    交易费（香港交易所）: 0.005%*成交金额，最低0.01港元
-    交易征费（香港证监会）: 0.0027*成交金额，最低0.01港元
-    -----------------------
-    港股融资融券（8332）套餐二（适合高频交易者）
-    融资利率: 年利率6.8%
-
-    佣金: 0.03%， 最低3港元
-    平台使用费: 阶梯式收费（以自然月计算）
-              每月累计订单           费用（港币/每笔订单）
-              ---------            ----------------
-              1-5                  30
-              6-20                 15
-              21-50                10
-              51-100               9
-              101-500              8
-              501-1000             7
-              1001-2000            6
-              2001-3000            5
-              3001-4000            4
-              4001-5000            3
-              5001-6000            2
-              6001及以上            1
-
-    交易系统使用费（香港交易所）: 每笔成交0.50港元
-    交收费（香港结算所）: 0.002%， 最低2港元，最高100港元
-    印花税（香港政府）: 0.1%*成交金额，不足1港元作1港元计，窝轮、牛熊证此费用不收取
-    交易费（香港交易所）: 0.005%*成交金额，最低0.01港元
-    交易征费（香港证监会）: 0.0027*成交金额，最低0.01港元
-    """
-    # 富途收费
-    commissions = 0       # 佣金
-    platform_fees = 0     # 平台使用费
-    # 富途代收费
-    system_fees = 0       # 交易系统使用费
-    settlement_fees = 0   # 交收费
-    stamp_fees = 0        # 印花税
-    trade_fees = 0        # 交易费
-    transaction_fees = 0  # 交易征费
-
-    total_trade_amount = 0
-    total_number_of_trades = 0
-    for trade in trades:
-        price = trade.get("price")
-        size = trade.get("size")
-        trade_amount = price * size
-        total_number_of_trades += 1
-        total_trade_amount += trade_amount
-
-        # 交易系统使用费
-        system_fee = round(0.50, 2)
-        system_fees += system_fee
-
-        # 交收费
-        settlement_fee = 0.00002*trade_amount
-        if settlement_fee<2.0:
-            settlement_fee = 2.0
-        elif settlement_fee>100.0:
-            settlement_fee = 100.0
-        settlement_fee = round(settlement_fee, 2)
-        settlement_fees += settlement_fee
-
-        # 印花税
-        stamp_fee = math.ceil(0.001*trade_amount)
-        stamp_fees += stamp_fee
-
-        # 交易费
-        trade_fee = max(0.00005*trade_amount, 0.01)
-        trade_fee = round(trade_fee, 2)
-        trade_fees += trade_fee
-
-        # 交易征费
-        transaction_fee = max(0.000027*trade_amount, 0.01)
-        transaction_fee = round(transaction_fee, 2)
-        transaction_fees += transaction_fee
-
-    # 佣金
-    commissions = max(0.0003*total_trade_amount, 3)
-    commissions = round(commissions, 2)
-
-    # 平台使用费
-    platform_fees = 15
-
-    # 总费用
-    total_fees = commissions + platform_fees + system_fees + settlement_fees + stamp_fees + trade_fees + transaction_fees
-    return commissions, platform_fees, system_fees, settlement_fees, stamp_fees, trade_fees, transaction_fees, total_fees

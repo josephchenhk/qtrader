@@ -10,7 +10,6 @@ from qtrader.core.constants import Direction, Offset
 from qtrader.core.deal import Deal
 from qtrader.core.position import Position, PositionData
 from qtrader.gateways import BaseGateway
-from qtrader.gateways.backtest import fees
 
 
 class Portfolio:
@@ -30,7 +29,7 @@ class Portfolio:
         direction = deal.direction
         offset = deal.offset
         filled_time = deal.updated_time
-        fee = fees({"price": price, "size": quantity})[-1]
+        fee = self.market.fees({"price": price, "size": quantity}).total_fees
         # update balance
         self.account_balance.cash -= fee
         if direction==Direction.LONG:

@@ -85,3 +85,15 @@ class BaseGateway(ABC):
     def get_orderbook(self, security:Stock)->OrderBook:
         """获取订单簿"""
         raise NotImplementedError("get_orderbook has not been implemented")
+
+
+class BaseFees:
+    """收费明细，作为基类被覆写"""
+    commissions: float = 0
+    platform_fees: float = 0
+    system_fees: float = 0
+    settlement_fees: float = 0
+    stamp_fees: float = 0
+    trade_fees: float = 0
+    transaction_fees: float = 0
+    total_fees: float = 0

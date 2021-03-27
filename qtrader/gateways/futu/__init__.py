@@ -5,4 +5,4 @@
 # @FileName: __init__.py.py
 # @Software: PyCharm
 
-from .futu_gateway import FutuGateway, fees
+from .futu_gateway import FutuGateway
