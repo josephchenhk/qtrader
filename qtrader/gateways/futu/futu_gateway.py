@@ -144,6 +144,9 @@ class FutuGateway(BaseGateway):
     # 参数设定
     SHORT_INTEREST_RATE = 0.0098  # 融券利息
 
+    # 名字
+    NAME = "FUTU"
+
 
     def __init__(self,
                  securities: List[Stock],
