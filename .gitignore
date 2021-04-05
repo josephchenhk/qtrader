@@ -151,6 +151,7 @@ qtrader/log/*
 # main
 main-tmp.py
 main_momentum.py
+main_capital.py
 
 # config
 qtrader/config/config-private.py
@@ -158,6 +159,7 @@ qtrader/config/config-private.py
 # strategies
 examples/pairtrade_strategy/*
 examples/momentum_strategy/*
+examples/capital_strategy/*
 
 # data
 examples/data/clickhouse/*

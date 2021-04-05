@@ -4,7 +4,7 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: main-tmp.py
 # @Software: PyCharm
-
+import importlib
 from datetime import datetime
 
 from qtrader.core.constants import TradeMode
@@ -14,10 +14,13 @@ from qtrader.core.position import Position
 from qtrader.core.balance import AccountBalance
 from qtrader.core.portfolio import Portfolio
 from qtrader.core.engine import Engine
-from qtrader.analysis.pnl import plot_pnl
 from qtrader.gateways import BacktestGateway
-from qtrader.gateways import FutuGateway
 from examples.demo_strategy import DemoStrategy
+from qtrader.config import ACTIVATED_PLUGINS
+
+plugins = dict()
+for plugin in ACTIVATED_PLUGINS:
+    plugins[plugin] = importlib.import_module(f"qtrader.plugins.{plugin}")
 
 
 if __name__=="__main__":
@@ -59,5 +62,7 @@ if __name__=="__main__":
     event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.BACKTEST)
     event_engine.run()
 
-    # plot_pnl(recorder.datetime, recorder.portfolio_value)
+    if "analysis" in plugins:
+        plot_pnl = plugins["analysis"].plot_pnl
+        plot_pnl(recorder.datetime, recorder.portfolio_value)
     engine.log.info("程序正常退出")

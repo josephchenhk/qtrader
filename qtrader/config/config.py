@@ -13,3 +13,5 @@ FUTU = {
     "port": 11111,
     "pwd_unlock": 123456,
 }
+
+ACTIVATED_PLUGINS = ["analysis"]
