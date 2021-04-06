@@ -62,6 +62,7 @@ if __name__=="__main__":
     event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.BACKTEST)
     event_engine.run()
 
+    recorder.save_csv()
     if "analysis" in plugins:
         plot_pnl = plugins["analysis"].plot_pnl
         plot_pnl(recorder.datetime, recorder.portfolio_value)
