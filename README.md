@@ -115,8 +115,12 @@ recorder = BarEventEngineRecorder()
 event_engine = BarEventEngine(strategy, recorder, trade_mode=TradeMode.BACKTEST)
 event_engine.run()
 
-# plot profit and loss curve
-plot_pnl(event_engine.recorder.datetime, event_engine.recorder.portfolio_value)
+# save recorder
+recorder.save_csv()
+if "analysis" in plugins:
+    # plot profit and loss curve
+    plot_pnl = plugins["analysis"].plot_pnl
+    plot_pnl(recorder.datetime, recorder.portfolio_value)
 ```
 
 
