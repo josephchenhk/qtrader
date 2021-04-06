@@ -5,9 +5,11 @@
 # @FileName: event_engine.py
 # @Software: PyCharm
 
+import os
 from time import sleep
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import pandas as pd
 
 from qtrader.core.constants import TradeMode
 from qtrader.core.strategy import BaseStrategy
@@ -40,6 +42,32 @@ class BarEventEngineRecorder:
             record.append(value)
         elif self.recorded_methods[field]=="override":
             setattr(self, field, value)
+
+    def save_csv(self, path=None):
+        """保存所有记录变量至csv"""
+        vars = [attr for attr in dir(self) if not callable(getattr(self, attr)) and not attr.startswith("__")]
+        assert "datetime" in vars, "`datetime` is not in the recorder!"
+        assert "portfolio_value" in vars, "`portfolio_value` is not in the recorder!"
+        if path is None:
+            path = "results"
+        if path not in os.listdir():
+            os.mkdir(path)
+        now = datetime.now()
+        os.mkdir(f"{path}/{now}")
+
+        dt = getattr(self, "datetime")
+        pv = getattr(self, "portfolio_value")
+        df = pd.DataFrame([dt, pv], index=["datetime", "portfolio_value"]).T
+        for var in vars:
+            if var in ("datetime", "portfolio_value", "recorded_methods"):
+                continue
+            v = getattr(self, var)
+            if self.recorded_methods[var]=="append":
+                df[var] = v
+            elif self.recorded_methods[var]=="override":
+                df[var] = None
+                df.iloc[len(dt)-1, df.columns.get_loc(var)] = str(v)
+        df.to_csv(f"{path}/{now}/result.csv")
 
 
 

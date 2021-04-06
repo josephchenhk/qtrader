@@ -147,6 +147,7 @@ qtrader/data/
 # log
 log/*
 qtrader/log/*
+results/*
 
 # main
 main-tmp.py
