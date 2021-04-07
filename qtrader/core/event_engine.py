@@ -67,7 +67,7 @@ class BarEventEngineRecorder:
             elif self.recorded_methods[var]=="override":
                 df[var] = None
                 df.iloc[len(dt)-1, df.columns.get_loc(var)] = str(v)
-        df.to_csv(f"{path}/{now}/result.csv")
+        df.to_csv(f"{path}/{now}/result.csv", index=False)
 
 
 
