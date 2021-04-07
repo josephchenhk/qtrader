@@ -155,6 +155,7 @@ main_momentum.py
 main_capital.py
 
 # config
+qtrader/config/config.py
 qtrader/config/config-private.py
 
 # strategies
