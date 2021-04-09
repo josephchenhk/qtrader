@@ -15,7 +15,7 @@ from qtrader.core.order import Order
 from qtrader.core.portfolio import Portfolio
 from qtrader.core.position import PositionData
 from qtrader.core.security import Stock
-from qtrader.core.data import Bar, _get_full_data, OrderBook, Quote
+from qtrader.core.data import Bar, _get_full_data, OrderBook, Quote, CapitalDistribution
 from qtrader.core.logger import logger
 
 
@@ -142,3 +142,7 @@ class Engine:
     def get_orderbook(self, security:Stock)->OrderBook:
         """获取最新orderbook （回测模式下暂不支持）"""
         return self.market.get_orderbook(security)
+
+    def get_capital_distribution(self, security:Stock)->CapitalDistribution:
+        """获取资金分布"""
+        return self.market.get_capital_distribution(security)

@@ -17,7 +17,7 @@ from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.position import Position, PositionData
 from qtrader.core.security import Stock
-from qtrader.core.data import Bar, OrderBook, Quote
+from qtrader.core.data import Bar, OrderBook, Quote, CapitalDistribution
 from qtrader.core.utility import Time, try_parsing_datetime
 from qtrader.config import FUTU
 from qtrader.gateways import BaseGateway
@@ -474,6 +474,24 @@ class FutuGateway(BaseGateway):
     def get_orderbook(self, security: Stock)->OrderBook:
         """获取订单簿"""
         return self.orderbook.get(security)
+
+    def get_capital_distribution(self, security:Stock)->CapitalDistribution:
+        """capital distribution"""
+        ret_code, data = self.quote_ctx.get_capital_distribution(security.code)
+        if ret_code:
+            print(f"获取资金分布失败：{data}")
+            return
+        cap_dist = CapitalDistribution(
+            datetime=datetime.strptime(data["update_time"].values[0], "%Y-%m-%d %H:%M:%S"),
+            security=security,
+            capital_in_big=data["capital_in_big"].values[0],
+            capital_in_mid=data["capital_in_mid"].values[0],
+            capital_in_small=data["capital_in_small"].values[0],
+            capital_out_big=data["capital_out_big"].values[0],
+            capital_out_mid=data["capital_out_mid"].values[0],
+            capital_out_small=data["capital_out_small"].values[0]
+        )
+        return cap_dist
 
 
 def convert_direction_qt2futu(direction:Direction)->TrdSide:
