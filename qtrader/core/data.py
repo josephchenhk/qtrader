@@ -191,3 +191,16 @@ class Quote:
     suspension: bool = False
     price_spread: float = 0
     sec_status: str = "NORMAL"
+
+
+@dataclass
+class CapitalDistribution:
+    """资金分布"""
+    datetime: datetime
+    security: Stock
+    capital_in_big: float
+    capital_in_mid: float
+    capital_in_small: float
+    capital_out_big: float
+    capital_out_mid: float
+    capital_out_small: float
