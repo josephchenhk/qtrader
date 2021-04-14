@@ -114,6 +114,27 @@ def try_parsing_datetime(text:str):
     # 如果不能解析时间文本（有可能为空），则返回当前本机系统时间
     return datetime.now()
 
+
+def get_kline_dfield_from_seconds(time_step:int)->str:
+    """
+    Get kline dfield (names) from given time steps (note: maximum interval is day)
+    :param time_step:
+    :return:
+    """
+    if time_step<60:
+        return f"k{time_step}s"
+    elif time_step<3600:
+        assert time_step % 60==0, f"Given timestep should be multiple of 60 seconds, but {time_step} was given."
+        time_step_in_mins = int(time_step / 60)
+        return f"k{time_step_in_mins}m"
+    elif time_step<3600*24:
+        assert time_step % 3600==0, f"Given timestep should be multiple of 3600 seconds, but {time_step} was given."
+        time_step_in_hours = int(time_step / 3600)
+        return f"k{time_step_in_hours}h"
+    else:
+        assert time_step == 3600*24, f"Given timestep can not exceed 3600*24 seconds, but {time_step} was given."
+        return f"k1d"
+
 if __name__=="__main__":
     blockdict = BlockingDict()
     blockdict.put(1, "a")
