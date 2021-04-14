@@ -147,7 +147,7 @@ class Quote:
 def _get_data_files(security:Stock, dfield:str)->List[str]:
     """获取csv文件"""
     if not os.path.exists(f"{DATA_PATH[dfield]}/{security.code}"):
-        return []
+        raise ValueError(f"{DATA_PATH[dfield]}/{security.code}数据不存在！")
     data_files = [f for f in os.listdir(f"{DATA_PATH[dfield]}/{security.code}") if ".csv" in f]
     return data_files
 
