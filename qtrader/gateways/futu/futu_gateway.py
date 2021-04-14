@@ -17,9 +17,9 @@ from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.position import Position, PositionData
 from qtrader.core.security import Stock
-from qtrader.core.data import Bar, OrderBook, Quote
+from qtrader.core.data import Bar, OrderBook, Quote, CapitalDistribution
 from qtrader.core.utility import Time, try_parsing_datetime
-from qtrader.config import FUTU
+from qtrader.config import FUTU, DATA_PATH
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
 
@@ -357,7 +357,7 @@ class FutuGateway(BaseGateway):
         cur_time = Time(hour=cur_datetime.hour, minute=cur_datetime.minute, second=cur_datetime.second)
         return (self.TRADING_HOURS_AM[0]<=cur_time<=self.TRADING_HOURS_AM[1]) or (self.TRADING_HOURS_PM[0]<=cur_time<=self.TRADING_HOURS_PM[1])
 
-    def get_recent_bar(self, security:Stock, cur_datetime:datetime=None, num_of_bars:int=1)->Union[Bar, List[Bar]]:
+    def get_recent_bar(self, security:Stock)->Bar:
         """
         获取最接近当前时间的数据点
 ,
@@ -365,15 +365,14 @@ class FutuGateway(BaseGateway):
         :param cur_time:
         :return:
         """
-        ret_code, data = self.quote_ctx.get_cur_kline(security.code, num_of_bars, SubType.K_1M, AuType.QFQ)  # 获取港股00700最近2个K线数据
+        #TODO：暂时写定是1分钟bar
+        ret_code, data = self.quote_ctx.get_cur_kline(security.code, 1, SubType.K_1M, AuType.QFQ)  # 获取港股00700最近2个K线数据
         if ret_code:
-            print('error:', data)
+            print(f"获取最近bar数据失败：{data}")
             return
         bars = []
         for i in range(data.shape[0]):
             bar_time = datetime.strptime(data.loc[i, "time_key"], "%Y-%m-%d %H:%M:%S")
-            # if bar_time>cur_datetime:
-            #     break
             bar = Bar(
                 datetime = bar_time,
                 security = security,
@@ -384,10 +383,50 @@ class FutuGateway(BaseGateway):
                 volume = data.loc[i, "volume"]
             )
             bars.append(bar)
-        if len(bars)==1:
-            return bars[0]
+        assert len(bars)==1, f"We only get 1 kline, but received {len(bars)} rows."
+        return bars[0]
+
+    def get_recent_capital_distribution(self, security:Stock)->CapitalDistribution:
+        """capital distribution"""
+        ret_code, data = self.quote_ctx.get_capital_distribution(security.code)
+        if ret_code:
+            print(f"获取资金分布失败：{data}")
+            return
+        cap_dist = CapitalDistribution(
+            datetime=datetime.strptime(data["update_time"].values[0], "%Y-%m-%d %H:%M:%S"),
+            security=security,
+            capital_in_big=data["capital_in_big"].values[0],
+            capital_in_mid=data["capital_in_mid"].values[0],
+            capital_in_small=data["capital_in_small"].values[0],
+            capital_out_big=data["capital_out_big"].values[0],
+            capital_out_mid=data["capital_out_mid"].values[0],
+            capital_out_small=data["capital_out_small"].values[0]
+        )
+        return cap_dist
+
+    def get_recent_data(self, security: Stock, **kwargs) -> Dict[str, Union[Bar, CapitalDistribution]] or Union[Bar, CapitalDistribution]:
+        """
+        获取最接近当前时间的数据点
+,
+        :param security:
+        :param cur_time:
+        :return:
+        """
+        if kwargs:
+            assert "dfield" in kwargs, f"`dfield` should be passed in as kwargs, but kwargs={kwargs}"
+            dfields = [kwargs["dfield"]]
         else:
-            return bars
+            dfields = DATA_PATH
+        data = dict()
+        for dfield in dfields:
+            if dfield=="k1m":
+                data[dfield] = self.get_recent_bar(security)
+            elif dfield=="capdist":
+                data[dfield] = self.get_recent_capital_distribution(security)
+        if len(dfields)==1:
+            return data[dfield]
+        return data
+
 
     def get_stock(self, code:str)->Stock:
         """根据股票代号，找到对应的股票"""
@@ -510,6 +549,7 @@ def convert_orderstatus_futu2qt(status:OrderStatus)->QTOrderStatus:
         return QTOrderStatus.FAILED
     else:
         raise ValueError(f"订单状态{status}不在程序处理范围内")
+
 
 
 

@@ -7,12 +7,14 @@
 
 import uuid
 from datetime import datetime
-from typing import List, Dict, Iterator
+from typing import List, Dict, Iterator, Union
 from dateutil.relativedelta import relativedelta
 
+from qtrader.config import DATA_PATH, DATA_MODEL
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction
-from qtrader.core.data import _get_full_data, _get_data_iterator, Quote, OrderBook, Bar
+from qtrader.core.data import Quote, OrderBook, Bar, CapitalDistribution
+from qtrader.core.data import _get_data, _get_data_iterator
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.position import PositionData
@@ -22,6 +24,8 @@ from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
 from qtrader.gateways.futu.futu_gateway import FutuHKEquityFees
 
+
+assert set(DATA_PATH.keys())==set(DATA_MODEL.keys()), "`DATA_PATH` and `DATA_MODEL` keys are not aligned! Please check qtrader.config.config.py"
 
 class BacktestGateway(BaseGateway):
 
@@ -42,7 +46,7 @@ class BacktestGateway(BaseGateway):
                  securities:List[Stock],
                  start:datetime,
                  end:datetime,
-                 dtype:List[str]=["open", "high", "low", "close", "volume"],
+                 dtypes:Dict[str, List[str]]=dict(k1m=["open", "high", "low", "close", "volume"]),
                  fees:BaseFees=FutuHKEquityFees, # 默认是港股富途收费
         )->Dict[Stock, Iterator]:
         """
@@ -51,26 +55,41 @@ class BacktestGateway(BaseGateway):
         :param securities:
         :param start:
         :param end:
-        :param dtype:
+        :param dtypes: key与DATA_PATH对应，e.g. {"k1m": ["open", "high", "low", "close", "volume"]}
+        :param fees:
         :return:
         """
+        assert set(dtypes.keys())==set(DATA_PATH.keys()), f"输入参数dtypes的键值必须预先在{DATA_PATH}里预先指定"
         super().__init__(securities)
         self.fees = fees
-        data_iterators = {}
-        trading_days = {}
+        data_iterators = dict()
+        prev_cache = dict()
+        next_cache = dict()
+        trading_days = dict()
         for security in securities:
-            full_data = _get_full_data(security=security, start=start, end=end, dtype=dtype)
-            data_it = _get_data_iterator(security=security, full_data=full_data)
-            data_iterators[security] = data_it
-            trading_days[security] = sorted(set(t.split(" ")[0] for t in full_data["time_key"].values))
+            data_iterators[security] = dict()
+            prev_cache[security]  = dict()
+            next_cache[security]  = dict()
+            for dfield in DATA_PATH.keys(): # k线数据 | 资金分布数据
+                # 存储进生成器字典data_iterators
+                data = _get_data(security=security, start=start, end=end, dfield=dfield, dtype=dtypes[dfield])
+                data_it = _get_data_iterator(security=security, full_data=data, class_name=DATA_MODEL[dfield])
+                data_iterators[security][dfield] = data_it
+                # 初始化数据缓存
+                prev_cache[security][dfield] = None
+                next_cache[security][dfield] = None
+                # 记录回测交易日(以分钟k线日历为准)
+                if dfield=="k1m":
+                    trading_days[security] = sorted(set(t.split(" ")[0] for t in data["time_key"].values))
         self.data_iterators = data_iterators
+        self.prev_cache = prev_cache
+        self.next_cache = next_cache
         self.trading_days = trading_days
         trading_days_list = set()
         for k,v in self.trading_days.items():
             trading_days_list.update(v)
         self.trading_days_list = sorted(trading_days_list)
-        self.prev_cache = {s:None for s in securities}
-        self.next_cache = {s:None for s in securities}
+
         self.start = start
         self.end = end
         self.market_datetime = start
@@ -145,7 +164,7 @@ class BacktestGateway(BaseGateway):
             next_trading_daytime = next_time
         return next_trading_daytime
 
-    def get_recent_bar(self, security:Stock, cur_datetime:datetime)->Bar:
+    def get_recent_data(self, security:Stock, cur_datetime:datetime, **kwargs)->Dict[str, Union[Bar, CapitalDistribution]] or Union[Bar, CapitalDistribution]:
         """
         获取最接近当前时间的数据点
 
@@ -154,36 +173,47 @@ class BacktestGateway(BaseGateway):
         :return:
         """
         assert cur_datetime>=self.market_datetime, f"历史不能回头，当前时间{cur_datetime}在dispatcher的系统时间{self.market_datetime}之前了"
-        data_it = self.data_iterators[security]
-        data_prev = self.prev_cache[security]
-        data_next = self.next_cache[security]
-
-        if cur_datetime>self.end:
-            pass
-
-        elif (data_prev is None) and (data_next is None):
-            bar = next(data_it)
-            if bar.datetime > cur_datetime:
-                self.next_cache[security] = bar
-            else:
-                while bar.datetime <= cur_datetime:
-                    self.prev_cache[security] = bar
-                    bar = next(data_it)
-                self.next_cache[security] = bar
-
+        if kwargs:
+            assert "dfield" in kwargs, f"`dfield` should be passed in as kwargs, but kwargs={kwargs}"
+            dfields = [kwargs["dfield"]]
         else:
-            if self.next_cache[security].datetime <= cur_datetime:
-                self.prev_cache[security] = self.next_cache[security]
-                try:
-                    bar = next(data_it)
-                    while bar.datetime <= cur_datetime:
-                        self.prev_cache[security] = bar
-                        bar = next(data_it)
-                    self.next_cache[security] = bar
-                except StopIteration:
-                    pass
+            dfields = DATA_PATH
+        data_it = dict()
+        data_prev = dict()
+        data_next = dict()
+        for dfield in dfields:
+            data_it[dfield] = self.data_iterators[security][dfield]
+            data_prev[dfield] = self.prev_cache[security][dfield]
+            data_next[dfield] = self.next_cache[security][dfield]
+
+            if cur_datetime>self.end:
+                pass
+
+            elif (data_prev[dfield] is None) and (data_next[dfield] is None):
+                data = next(data_it[dfield])
+                if data.datetime > cur_datetime:
+                    self.next_cache[security][dfield] = data
+                else:
+                    while data.datetime <= cur_datetime:
+                        self.prev_cache[security][dfield] = data
+                        data = next(data_it[dfield])
+                    self.next_cache[security][dfield] = data
+
+            else:
+                if self.next_cache[security][dfield].datetime <= cur_datetime:
+                    self.prev_cache[security][dfield] = self.next_cache[security][dfield]
+                    try:
+                        data = next(data_it[dfield])
+                        while data.datetime <= cur_datetime:
+                            self.prev_cache[security][dfield] = data
+                            data = next(data_it[dfield])
+                        self.next_cache[security][dfield] = data
+                    except StopIteration:
+                        pass
 
         self.market_datetime = cur_datetime
+        if len(dfields)==1:
+            return self.prev_cache[security][dfield]
         return self.prev_cache[security]
 
     def place_order(self, order:Order)->str:

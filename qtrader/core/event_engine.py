@@ -13,8 +13,7 @@ import pandas as pd
 
 from qtrader.core.constants import TradeMode
 from qtrader.core.strategy import BaseStrategy
-from qtrader.core.utility import timeit
-
+from qtrader.core.utility import timeit, get_kline_dfield_from_seconds
 
 
 class BarEventEngineRecorder:
@@ -109,6 +108,7 @@ class BarEventEngine:
 
         # 开始事件循环（若为回测，则回放历史数据）
         time_step = market.TIME_STEP
+        kline_dfield = get_kline_dfield_from_seconds(time_step)
         cur_datetime = datetime.now() if self.start is None else self.start
         while cur_datetime<=self.end:
             if not market.is_trading_time(cur_datetime):
@@ -133,11 +133,9 @@ class BarEventEngine:
             cur_data = {}
             for security in securities:
                 if self.trade_mode == TradeMode.BACKTEST:
-                    data = market.get_recent_bar(security, cur_datetime)
+                    data = market.get_recent_data(security, cur_datetime)
                 else:
-                    data = market.get_recent_bar(security)
-                # if data is None:
-                #     engine.log.info.info(f"{cur_datetime} {security} 没有数据！")
+                    data = market.get_recent_data(security)
                 cur_data[security] = data
 
             # 运行策略

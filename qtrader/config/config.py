@@ -6,7 +6,13 @@
 # @Software: PyCharm
 
 
-DATA_PATH = "./qtrader/examples/data"
+DATA_PATH = {
+    "k1m": "./qtrader/examples/data/k_line/K_1M",
+}
+
+DATA_MODEL = {
+    "k1m": "Bar",
+}
 
 FUTU = {
     "host": "127.0.0.1",
