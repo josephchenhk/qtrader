@@ -19,23 +19,121 @@ from qtrader.core.data import Bar, CapitalDistribution, OrderBook, Quote
 from qtrader.core.data import _get_data
 from qtrader.core.logger import logger
 from qtrader.config import DATA_MODEL, DATA_PATH
-
+from qtrader.config import ACTIVATED_PLUGINS
+from qtrader.config import GATEWAY
 
 class Engine:
 
     """Execution engine"""
 
-    def __init__(self, portfolio:Portfolio):
+    def __init__(self, portfolio:Portfolio, plugins:Dict[str, Any]=dict()):
         self.portfolio = portfolio
         self.market = portfolio.market
         self.log = logger
+        for plugin in ACTIVATED_PLUGINS:
+            plugins[plugin] = importlib.import_module(f"qtrader.plugins.{plugin}")
+        self.plugins = plugins
+        if "sqlite3" in self.plugins:
+            DB = getattr(self.plugins["sqlite3"], "DB")
+            self.db = DB()
+
+    def get_plugins(self)->Dict[str, Any]:
+        """engine启动的插件"""
+        return self.plugins
+
+    def has_db(self):
+        """判断是否启动db"""
+        return hasattr(self, "db")
 
     def sync_broker_balance(self):
         """同步券商资金"""
         broker_balance = self.get_broker_balance()
         if broker_balance is None:
             return
-        self.portfolio.account_balance = broker_balance
+        if not self.has_db():
+            self.portfolio.account_balance = broker_balance
+            return
+        # 对db数据进行处理
+        db_balance = self.db.select_records(
+            table_name="balance",
+            broker_name=GATEWAY["broker_name"],
+            broker_environment=self.market.trade_mode.name,
+            broker_account=GATEWAY["broker_account"],
+        )
+        if db_balance.empty:
+            account_ids = self.db.select_records(table_name="balance", columns=["broker_account_id", "strategy_account_id"])
+            if account_ids.empty:
+                broker_account_id = 1
+                strategy_account_id = 1
+            else:
+                broker_account_id = max(account_ids["broker_account_id"]) + 1
+                strategy_account_id = max(account_ids["strategy_account_id"]) + 1
+            # 先创建一条default记录
+            self.db.insert_balance_table(
+                broker_name=GATEWAY["broker_name"],
+                broker_environment=self.market.trade_mode.name,
+                broker_account_id=broker_account_id,
+                broker_account=GATEWAY["broker_account"],
+                strategy_account_id=strategy_account_id,
+                strategy_account="default",
+                strategy_version=self.strategy_version,
+                strategy_version_desc="manual trading",
+                strategy_status="active",
+                cash=broker_balance.cash - self.portfolio.account_balance.cash,
+                power=broker_balance.power - self.portfolio.account_balance.power,
+                max_power_short=-1,
+                net_cash_power=-1,
+                update_time=datetime.now(),
+                remark="N/A"
+            )
+            # 再创建策略balance记录
+            self.db.insert_balance_table(
+                broker_name = GATEWAY["broker_name"],
+                broker_environment = self.market.trade_mode.name,
+                broker_account_id = broker_account_id,
+                broker_account = GATEWAY["broker_account"],
+                strategy_account_id = strategy_account_id + 1,
+                strategy_account = self.strategy_account,
+                strategy_version = self.strategy_version,
+                strategy_version_desc = "",
+                strategy_status="active",
+                cash = self.portfolio.account_balance.cash,
+                power = self.portfolio.account_balance.power,
+                max_power_short = -1,
+                net_cash_power = -1,
+                update_time = datetime.now(),
+                remark = "N/A"
+            )
+        else:
+            # update default strategy
+            id_ = db_balance[db_balance["strategy_account"]=="default"]["id"].values[0]
+            fields = ("cash", "power")
+            for field in fields:
+                delta_val = getattr(broker_balance, field) - sum(db_balance[field])
+                current_val = db_balance[db_balance["strategy_account"]=="default"][field].values[0]
+                if delta_val!=0:
+                    sql = (
+                        "UPDATE balance " +
+                        f"SET {field} = {current_val+delta_val} "
+                        f"WHERE id={id_}"
+                    )
+                    self.db.execute(sql)
+
+        db_balance = self.db.select_records(
+            table_name="balance",
+            broker_name=GATEWAY["broker_name"],
+            broker_environment=self.market.trade_mode.name,
+            broker_account=GATEWAY["broker_account"],
+            strategy_account=self.strategy_account,
+            strategy_version=self.strategy_version,
+        )
+
+        assert db_balance.shape[0]==1, f"There are more than one rows in db: {self.strategy_account} {self.strategy_version}"
+        self.portfolio.account_balance.cash = db_balance["cash"].values[0]
+        self.portfolio.account_balance.power = db_balance["power"].values[0]
+        self.portfolio.account_balance.max_power_short = db_balance["max_power_short"].values[0]
+        self.portfolio.account_balance.net_cash_power = db_balance["net_cash_power"].values[0]
+
 
     def sync_broker_position(self):
         """同步券商持仓"""
