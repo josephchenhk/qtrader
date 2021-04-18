@@ -48,8 +48,7 @@ class Engine:
     def sync_broker_balance(self):
         """同步券商资金"""
         broker_balance = self.get_broker_balance()
-        if broker_balance is None:
-            return
+        if broker_balance is None: return
         if not self.has_db():
             self.portfolio.account_balance = broker_balance
             return
@@ -69,6 +68,8 @@ class Engine:
                 broker_account_id = max(account_ids["broker_account_id"]) + 1
                 strategy_account_id = max(account_ids["strategy_account_id"]) + 1
             # 先创建一条default记录
+            cash = broker_balance.cash - self.portfolio.account_balance.cash
+            assert cash>=0, f"{self.strategy_account}({self.strategy_version}) 现金占用的额度不能超过broker总可用现金"
             self.db.insert_balance_table(
                 broker_name=GATEWAY["broker_name"],
                 broker_environment=self.market.trade_mode.name,
@@ -79,7 +80,7 @@ class Engine:
                 strategy_version=self.strategy_version,
                 strategy_version_desc="manual trading",
                 strategy_status="active",
-                cash=broker_balance.cash - self.portfolio.account_balance.cash,
+                cash=cash,
                 power=broker_balance.power - self.portfolio.account_balance.power,
                 max_power_short=-1,
                 net_cash_power=-1,
@@ -90,9 +91,9 @@ class Engine:
             self.db.insert_balance_table(
                 broker_name = GATEWAY["broker_name"],
                 broker_environment = self.market.trade_mode.name,
-                broker_account_id = broker_account_id,
+                broker_account_id = broker_account_id,         # 与default同一个broker account id
                 broker_account = GATEWAY["broker_account"],
-                strategy_account_id = strategy_account_id + 1,
+                strategy_account_id = strategy_account_id + 1, # 与default不同strategy account id
                 strategy_account = self.strategy_account,
                 strategy_version = self.strategy_version,
                 strategy_version_desc = "",
@@ -112,12 +113,11 @@ class Engine:
                 delta_val = getattr(broker_balance, field) - sum(db_balance[field])
                 current_val = db_balance[db_balance["strategy_account"]=="default"][field].values[0]
                 if delta_val!=0:
-                    sql = (
-                        "UPDATE balance " +
-                        f"SET {field} = {current_val+delta_val} "
-                        f"WHERE id={id_}"
+                    self.db.update_records(
+                        table_name="balance",
+                        columns={field: current_val+delta_val},
+                        id=id_
                     )
-                    self.db.execute(sql)
 
         db_balance = self.db.select_records(
             table_name="balance",
