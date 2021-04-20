@@ -4,9 +4,11 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: strategy.py
 # @Software: PyCharm
+from typing import List
 
 from qtrader.core.engine import Engine
 from qtrader.core.portfolio import Portfolio
+from qtrader.core.security import Stock
 
 
 class BaseStrategy:
@@ -14,12 +16,16 @@ class BaseStrategy:
     策略基类
     To write a strategy, override init_strategy and on_bar methods
     """
+    strategy_account:str = ""
+    strategy_version:str = ""
+    securities:List[Stock] = list()
 
-    securities = []
-
-    def __init__(self, engine:Engine):
+    def __init__(self, engine:Engine, strategy_account:str, strategy_version:str):
         # 引擎
         self.engine = engine
+        self.strategy_account = strategy_account
+        self.strategy_version = strategy_version
+        self.engine.init_portfolio(strategy_account=strategy_account, strategy_version=strategy_version)
 
     def init_strategy(self):
         self.engine.log.info("完成策略初始化")

@@ -6,6 +6,7 @@
 # @Software: PyCharm
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Dict
 
 from qtrader.core.constants import Direction, Offset
 from qtrader.core.security import Stock
@@ -28,7 +29,9 @@ class Position:
     记录持仓
     """
 
-    def __init__(self, holdings={}):
+    def __init__(self, holdings:Dict=None):
+        if holdings is None:
+            holdings = dict()
         self.holdings = holdings
 
     def update(self, position_data:PositionData, offset:Offset):
@@ -87,3 +90,14 @@ class Position:
             elif Direction.SHORT in self.holdings[security]:
                 positions.append(self.holdings[security][Direction.SHORT])
         return positions
+
+    def __str__(self):
+        position_str = "Position(\n"
+        for security in self.holdings:
+            for direction in [Direction.LONG, Direction.SHORT]:
+                if self.holdings[security].get(direction) is not None:
+                    position_str += str(self.holdings[security][direction])
+                    position_str += "\n"
+        position_str += ")"
+        return position_str
+    __repr__=__str__

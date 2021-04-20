@@ -14,6 +14,6 @@ class AccountBalance:
     账户资金信息
     """
     cash: float = 0.0                     # 初始现金
-    power: float = None                   # 最大购买力
+    power: float = 0.0                    # 最大购买力
     max_power_short: float = None         # 卖空购买力
     net_cash_power: float = None          # 现金购买力

@@ -15,8 +15,8 @@ from qtrader.core.strategy import BaseStrategy
 
 class DemoStrategy(BaseStrategy):
 
-    def __init__(self, securities:List[Stock], engine:Engine):
-        super().__init__(engine)
+    def __init__(self, securities:List[Stock], strategy_account:str, strategy_version:str, engine:Engine):
+        super().__init__(engine=engine, strategy_account=strategy_account, strategy_version=strategy_version)
         # 股票
         self.securities = securities
         # 执行引擎
@@ -33,13 +33,11 @@ class DemoStrategy(BaseStrategy):
 
         # check balance
         balance = self.engine.get_balance()
-        broker_balance = self.engine.get_broker_balance()
-        self.engine.log.info(f"{balance}, {broker_balance}")
+        self.engine.log.info(f"{balance}")
 
         # check position
         positions = self.engine.get_all_positions()
-        broker_positions = self.engine.get_all_broker_positions()
-        self.engine.log.info(f"{positions}, {broker_positions}")
+        self.engine.log.info(f"{positions}")
 
         # send orders
         for security in cur_data:

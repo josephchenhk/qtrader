@@ -24,6 +24,9 @@ class DB:
         self.conn = sqlite3.connect(f"{db_path}/qtrader.db")
         self.cursor = self.conn.cursor()
         self.create_balance_table()
+        self.create_position_table()
+        self.create_order_table()
+        self.create_deal_table()
 
     def close(self):
         self.cursor.close()
@@ -99,6 +102,10 @@ class DB:
         sql += ")"
         self.execute(sql)
 
+    def delete_records(self, table_name:str, **kwargs):
+        sql = f"DELETE FROM {table_name} {self._parse_sql_where_condition(**kwargs)}"
+        self.execute(sql)
+
     def create_balance_table(self):
         sql = (
             "CREATE TABLE IF NOT EXISTS balance " +
@@ -121,6 +128,26 @@ class DB:
         )
         self.execute(sql)
 
+    def create_position_table(self):
+        sql = (
+            "CREATE TABLE IF NOT EXISTS position " +
+            "(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+            "balance_id INTEGER NOT NULL, "
+            "security_name VARCHAR(20) NOT NULL, " +
+            "security_code VARCHAR(20) NOT NULL, " +
+            "direction VARCHAR(20) NOT NULL, " +
+            "holding_price DOUBLE NOT NULL, " +
+            "quantity INTEGER NOT NULL, " +
+            "update_time DATETIME NOT NULL, "    
+            "remark VARCHAR(300))"
+        )
+        self.execute(sql)
+
+    def create_order_table(self):
+        pass
+
+    def create_deal_table(self):
+        pass
 
 
 

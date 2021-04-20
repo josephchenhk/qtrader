@@ -19,10 +19,11 @@ from qtrader.core.position import Position, PositionData
 from qtrader.core.security import Stock
 from qtrader.core.data import Bar, OrderBook, Quote, CapitalDistribution
 from qtrader.core.utility import Time, try_parsing_datetime
-from qtrader.config import FUTU, DATA_PATH
+from qtrader.config import GATEWAY, DATA_PATH
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
 
+FUTU = GATEWAY
 
 class FutuHKEquityFees(BaseFees):
     """
@@ -344,7 +345,9 @@ class FutuGateway(BaseGateway):
         if ret_sub == RET_OK:  # 订阅成功
             print(f"成功订阅1min K线、报价和订单簿: {self.securities}")
         else:
-            raise ValueError(f"订阅失败: {err_message}")
+            # TODO: temp change
+            pass
+            #raise ValueError(f"订阅失败: {err_message}")
 
     def is_trading_time(self, cur_datetime:datetime)->bool:
         """
@@ -475,6 +478,8 @@ class FutuGateway(BaseGateway):
         balance.power = data["power"].values[0]
         balance.max_power_short = data["max_power_short"].values[0]
         balance.net_cash_power = data["net_cash_power"].values[0]
+        if not isinstance(balance.max_power_short, float): balance.max_power_short = -1
+        if not isinstance(balance.net_cash_power, float): balance.net_cash_power = -1
         return balance
 
     def get_broker_position(self, security:Stock, direction:Direction)->PositionData:

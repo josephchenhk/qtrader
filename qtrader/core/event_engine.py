@@ -80,13 +80,12 @@ class BarEventEngine:
                  recorder:BarEventEngineRecorder,
                  start:datetime=None,
                  end:datetime=None,
-                 trade_mode=TradeMode.BACKTEST):
+        ):
         self.strategy = strategy
         self.recorder = recorder
 
         # mode用于判断是回测模式还是实盘模式
-        self.trade_mode = trade_mode
-        strategy.engine.market.set_trade_mode(trade_mode)
+        self.trade_mode = strategy.engine.market.trade_mode
 
         # 确定模式之后，尝试同步券商的资金和持仓信息（回测模式下不会有任何变化）
         strategy.engine.sync_broker_balance()
@@ -95,10 +94,8 @@ class BarEventEngine:
         strategy.engine.log.info(strategy.engine.get_balance())
         strategy.engine.log.info(strategy.engine.get_all_positions())
 
-        if start is None:
-            self.start = strategy.engine.market.start
-        if end is None:
-            self.end = strategy.engine.market.end
+        if start is None: self.start = strategy.engine.market.start
+        if end is None: self.end = strategy.engine.market.end
 
     @timeit
     def run(self):
