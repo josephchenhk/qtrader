@@ -345,9 +345,7 @@ class FutuGateway(BaseGateway):
         if ret_sub == RET_OK:  # 订阅成功
             print(f"成功订阅1min K线、报价和订单簿: {self.securities}")
         else:
-            # TODO: temp change
-            pass
-            #raise ValueError(f"订阅失败: {err_message}")
+            raise ValueError(f"订阅失败: {err_message}")
 
     def is_trading_time(self, cur_datetime:datetime)->bool:
         """
