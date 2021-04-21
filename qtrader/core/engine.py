@@ -55,6 +55,7 @@ class Engine:
     def stop(self):
         if self.has_db():
             self.persist_active = False
+            self.db.close()
 
     def init_portfolio(self, strategy_account:str, strategy_version:str, init_strategy_cash:float):
         """初始化投资组合相关信息"""
@@ -496,6 +497,7 @@ def persist_data(engine):
         persist_position(engine)
         engine.log.info("[Position] is persisted")
         sleep(5)
+    engine.db.close()
     engine.log.info("Gracefully stop persisting data.")
 
 def persist_account_balance(engine):
