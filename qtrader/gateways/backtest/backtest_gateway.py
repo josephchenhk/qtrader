@@ -59,7 +59,11 @@ class BacktestGateway(BaseGateway):
         :param fees:
         :return:
         """
-        assert set(dtypes.keys())==set(DATA_PATH.keys()), f"输入参数dtypes的键值必须预先在{DATA_PATH}里预先指定"
+        assert set(dtypes.keys())==set(DATA_PATH.keys()), (
+            f"在{self.__class__.__name__}的__init__函数里，"
+            f"输入参数dtypes的键值必须与DATA_PATH里的设定一致，dtypes需输入以下数据：{','.join(DATA_PATH.keys())}，"
+            f"但目前只有：{','.join(dtypes.keys())}"
+        )
         super().__init__(securities)
         self.fees = fees
         data_iterators = dict()

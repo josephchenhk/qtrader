@@ -26,12 +26,13 @@ if __name__=="__main__":
         start=datetime(2021, 3, 15, 9, 30, 0, 0),
         end=datetime(2021, 3, 17, 16, 0, 0, 0),
     )
+    market.set_trade_mode(TradeMode.BACKTEST)
 
     # market = FutuGateway(
     #     securities=stock_list,
-    #     end=datetime(2021, 4, 16, 16, 0, 0, 0),
+    #     end=datetime(2021, 4, 21, 16, 0, 0, 0),
     # )
-    market.set_trade_mode(TradeMode.BACKTEST)
+    # market.set_trade_mode(TradeMode.SIMULATE)
 
 
     # 执行引擎
@@ -44,6 +45,7 @@ if __name__=="__main__":
         securities=stock_list,
         strategy_account=strategy_account,
         strategy_version=strategy_version,
+        init_strategy_cash=10000,
         engine=engine)
     strategy.init_strategy()
 

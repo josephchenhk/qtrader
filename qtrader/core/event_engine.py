@@ -103,6 +103,8 @@ class BarEventEngine:
         market = self.strategy.engine.market
         securities = self.strategy.securities
 
+        engine.start()
+
         # 开始事件循环（若为回测，则回放历史数据）
         time_step = market.TIME_STEP
         kline_dfield = get_kline_dfield_from_seconds(time_step)
@@ -142,6 +144,13 @@ class BarEventEngine:
                 value = getattr(self.strategy, f"get_{field}")()
                 self.recorder.write_record(field, value)
 
+            # 通过控件来中断程序运行：
+            if False:
+                market.close()
+                engine.stop()
+                engine.log.info("程序被人手终止")
+                return
+
             # 更新事件循环时间戳
             if self.trade_mode == TradeMode.BACKTEST:
                 cur_datetime += relativedelta(seconds=time_step)
@@ -150,4 +159,5 @@ class BarEventEngine:
                 cur_datetime = datetime.now()
 
         market.close()
-        engine.log.info("到达预期结束时间，策略停止")
+        engine.stop()
+        engine.log.info("到达预期结束时间，策略停止（其他工作任务线程将会在1分钟内停止）")

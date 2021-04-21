@@ -20,12 +20,16 @@ class BaseStrategy:
     strategy_version:str = ""
     securities:List[Stock] = list()
 
-    def __init__(self, engine:Engine, strategy_account:str, strategy_version:str):
+    def __init__(self, engine:Engine, strategy_account:str, strategy_version:str, init_strategy_cash:float):
         # 引擎
         self.engine = engine
         self.strategy_account = strategy_account
         self.strategy_version = strategy_version
-        self.engine.init_portfolio(strategy_account=strategy_account, strategy_version=strategy_version)
+        self.engine.init_portfolio(
+            strategy_account=strategy_account,
+            strategy_version=strategy_version,
+            init_strategy_cash=init_strategy_cash,
+        )
 
     def init_strategy(self):
         self.engine.log.info("完成策略初始化")

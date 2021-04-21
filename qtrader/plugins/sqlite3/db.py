@@ -155,6 +155,8 @@ class DB:
 
 if __name__=="__main__":
     db = DB()
+    db.delete_records(table_name="balance")
+    db.delete_records(table_name="position")
     # db.delete_table("balance")
     # db.create_balance_table()
 

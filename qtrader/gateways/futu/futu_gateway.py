@@ -4,6 +4,12 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: futu_gateway.py
 # @Software: PyCharm
+
+"""
+Please install futu-api first:
+> $ pip install futu-api
+"""
+
 import math
 import uuid
 from typing import Dict, List, Union

@@ -7,7 +7,7 @@
 from time import sleep
 from typing import Dict, List
 
-from qtrader.core.constants import Direction, Offset, OrderType
+from qtrader.core.constants import Direction, Offset, OrderType, TradeMode
 from qtrader.core.data import Bar
 from qtrader.core.engine import Engine
 from qtrader.core.security import Stock
@@ -15,14 +15,24 @@ from qtrader.core.strategy import BaseStrategy
 
 class DemoStrategy(BaseStrategy):
 
-    def __init__(self, securities:List[Stock], strategy_account:str, strategy_version:str, engine:Engine):
-        super().__init__(engine=engine, strategy_account=strategy_account, strategy_version=strategy_version)
+    def __init__(self, securities:List[Stock], strategy_account:str, strategy_version:str, init_strategy_cash:float, engine:Engine):
+        super().__init__(
+            engine=engine,
+            strategy_account=strategy_account,
+            strategy_version=strategy_version,
+            init_strategy_cash=init_strategy_cash,
+        )
         # 股票
         self.securities = securities
         # 执行引擎
         self.engine = engine
         # 投资组合管理
         self.portfolio = engine.portfolio
+        # 等待执行时间
+        if engine.market.trade_mode==TradeMode.BACKTEST:
+            self.sleep_time = 0
+        else:
+            self.sleep_time = 10
 
     def init_strategy(self):
         pass
@@ -44,21 +54,24 @@ class DemoStrategy(BaseStrategy):
 
             orderbook = self.engine.get_orderbook(security)
             quote = self.engine.get_quote(security)
-            bar = cur_data[security]
+            data = cur_data[security]
             self.engine.log.info(quote)
             self.engine.log.info(orderbook)
-            self.engine.log.info(bar)
+            self.engine.log.info(data)
 
+            if isinstance(data, dict): price = data["k1m"].close
+            elif isinstance(data, Bar): price = data.close
+            else: raise ValueError(f"data不是合法的格式！")
             orderid = self.engine.send_order(
                 security=security,
-                price=bar.close,
+                price=price,
                 quantity=security.lot_size,
                 direction=Direction.LONG,
                 offset=Offset.OPEN,
                 order_type=OrderType.LIMIT
             )
 
-            # sleep(1)
+            sleep(self.sleep_time)
             order = self.engine.get_order(orderid)
             self.engine.log.info(f"发出订单{order}")
 

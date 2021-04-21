@@ -6,7 +6,9 @@
 # @Software: PyCharm
 import importlib
 from datetime import datetime
+from time import sleep
 from typing import List, Union, Any, Dict
+from threading import Thread
 
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import Direction, Offset, OrderType, TradeMode
@@ -36,19 +38,33 @@ class Engine:
         self.plugins = dict()
         for plugin in ACTIVATED_PLUGINS:
             self.plugins[plugin] = importlib.import_module(f"qtrader.plugins.{plugin}")
-        if "sqlite3" in self.plugins:
+        # 只有仿真和实盘环境才会进行数据持久化，回测环境下即使在config里指定启用db，也会被忽略
+        if (market.trade_mode in (TradeMode.SIMULATE, TradeMode.LIVETRADE)) and ("sqlite3" in self.plugins):
             DB = getattr(self.plugins["sqlite3"], "DB")
             self.db = DB()
 
-    def init_portfolio(self, strategy_account:str, strategy_version:str):
+            # 新建线程，定期将数据持久化到数据库
+            self.persist_active: bool = False
+            self._persist_t: Thread = Thread(target=persist_data, args=(self,), name="persist_thread")
+
+    def start(self):
+        if self.has_db():
+            self.persist_active = True
+            self._persist_t.start()
+
+    def stop(self):
+        if self.has_db():
+            self.persist_active = False
+
+    def init_portfolio(self, strategy_account:str, strategy_version:str, init_strategy_cash:float):
         """初始化投资组合相关信息"""
         self.strategy_account = strategy_account
         self.strategy_version = strategy_version
         # 先初始化投资组合管理，account_balance和position会在后面进行同步sync
         self.portfolio = Portfolio(
-            account_balance=AccountBalance(), # 账户余额
-            position=Position(),              # 头寸管理
-            market=self.market                # 交易通道
+            account_balance=AccountBalance(cash=init_strategy_cash), # 账户余额
+            position=Position(),                                     # 头寸管理
+            market=self.market                                       # 交易通道
         )
 
     def get_plugins(self)->Dict[str, Any]:
@@ -127,7 +143,9 @@ class Engine:
                 strategy_account_id = max(account_ids["strategy_account_id"]) + 1
             # 先创建一条default记录
             cash = broker_balance.cash - self.portfolio.account_balance.cash
-            assert cash>=0, f"{self.strategy_account}({self.strategy_version}) 现金占用的额度不能超过broker总可用现金"
+            power = broker_balance.power - self.portfolio.account_balance.power
+            assert cash >= 0, f"{self.strategy_account}({self.strategy_version}) 现金占用的额度不能超过broker总可用现金"
+            assert power >= 0, f"{self.strategy_account}({self.strategy_version}) 购买力占用的额度不能超过broker总购买力"
             self.db.insert_records(
                 table_name="balance",
                 broker_name=GATEWAY["broker_name"],
@@ -140,7 +158,7 @@ class Engine:
                 strategy_version_desc="manual trading",
                 strategy_status="active",
                 cash=cash,
-                power=broker_balance.power - self.portfolio.account_balance.power,
+                power=power,
                 max_power_short=-1,
                 net_cash_power=-1,
                 update_time=datetime.now(),
@@ -172,6 +190,11 @@ class Engine:
             for field in fields:
                 delta_val = getattr(broker_balance, field) - sum(balance_df[field])
                 current_val = balance_df[balance_df["strategy_account"]=="default"][field].values[0]
+                assert current_val+delta_val>=0, (
+                    f"Check balance (id={id_}:\n"
+                    f"Current {field}: {current_val}, but we want to modify to a negative number:"
+                    f"new {field}: {current_val+delta_val} ({current_val} + {delta_val})"
+                )
                 if delta_val!=0:
                     self.db.update_records(
                         table_name="balance",
@@ -461,3 +484,72 @@ def convert_direction_db2qt(direction:str) -> Direction:
         return Direction.NET
     else:
         raise ValueError(f"direction {direction} in database is invalid!")
+
+def persist_data(engine):
+    # 在新线程里重新建立数据库连接
+    DB = getattr(engine.plugins["sqlite3"], "DB")
+    setattr(engine, "db", DB())
+    # 定期进行数据入库
+    while engine.persist_active:
+        persist_account_balance(engine)
+        engine.log.info("[Account balance] is persisted")
+        persist_position(engine)
+        engine.log.info("[Position] is persisted")
+        sleep(5)
+    engine.log.info("Gracefully stop persisting data.")
+
+def persist_account_balance(engine):
+    """账户有任何更新，就写入数据库"""
+    db_balance = engine.get_db_balance(strategy_account=engine.strategy_account,
+                                     strategy_version=engine.strategy_version)
+    if db_balance is None:
+        engine.log.info(
+            "[persist_account_balance] Account Balance is not available in the DB yet, need to sync balance first."
+        )
+        return
+    updates = dict()
+    for field in ("cash", "power", "max_power_short", "net_cash_power"):
+        if getattr(engine.portfolio.account_balance, field) != getattr(db_balance, field):
+            updates[field] = getattr(engine.portfolio.account_balance, field)
+    if updates:
+        engine.db.update_records(
+            table_name="balance",
+            columns=updates,
+            strategy_account=engine.strategy_account,
+            strategy_version=engine.strategy_version,
+        )
+
+def persist_position(engine):
+    """头寸有任何更新，就写入数据库"""
+    balance_df = engine.db.select_records(
+        table_name="balance",
+        broker_name=GATEWAY["broker_name"],
+        broker_environment=engine.market.trade_mode.name,
+        broker_account=GATEWAY["broker_account"],
+        strategy_account=engine.strategy_account,
+        strategy_version=engine.strategy_version,
+    )
+    if balance_df.empty:
+        engine.log.info(
+            "[persist_position] Account Balance is not available in the DB yet, need to sync balance first."
+        )
+        return
+    assert balance_df.shape[0] == 1, f"There are more than 1 records found in Balance. Check\n{balance_df}"
+    balance_id = balance_df["id"].values[0]
+    db_position = engine.get_db_position(balance_id=balance_id)
+    if db_position:
+        engine.db.delete_records(
+            table_name="position",
+            balance_id=balance_id,
+        )
+    for position_data in engine.portfolio.position.get_all_positions():
+        engine.db.insert_records(
+            table_name="position",
+            balance_id=balance_id,
+            security_name=position_data.security.stock_name,
+            security_code=position_data.security.code,
+            direction=position_data.direction.name,
+            holding_price=position_data.holding_price,
+            quantity=position_data.quantity,
+            update_time=position_data.update_time
+        )
