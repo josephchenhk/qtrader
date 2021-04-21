@@ -5,6 +5,7 @@
 # @FileName: db.py
 # @Software: PyCharm
 
+import threading
 import sqlite3
 from datetime import datetime
 from typing import Iterable, List, Dict, Union
@@ -18,6 +19,8 @@ try:
 except:
     raise ValueError("`sqlite3` is activated, and its path must be specified in `DB` variable in config.py")
 
+lock = threading.Lock()
+
 class DB:
 
     def __init__(self):
@@ -29,19 +32,21 @@ class DB:
         self.create_deal_table()
 
     def close(self):
-        self.cursor.close()
-        self.conn.close()
+        with lock:
+            self.cursor.close()
+            self.conn.close()
 
     def commit(self):
         self.conn.commit()
 
     def execute(self, sql:str, parameters:Iterable=None):
-        if parameters is None:
-            self.cursor.execute(sql)
+        with lock:
+            if parameters is None:
+                self.cursor.execute(sql)
+                self.commit()
+                return
+            self.cursor.execute(sql, parameters)
             self.commit()
-            return
-        self.cursor.execute(sql, parameters)
-        self.commit()
 
     def _parse_sql_value(self, value:Union[str,float,int,datetime]):
         if isinstance(value, str):
@@ -78,8 +83,9 @@ class DB:
         sql = f"SELECT {columns} FROM {table_name} "
         sql += self._parse_sql_where_condition(**kwargs)
         self.execute(sql)
-        data = self.cursor.fetchall()
-        return pd.DataFrame(data, columns=[d[0] for d in self.cursor.description])
+        with lock:
+            data = self.cursor.fetchall()
+            return pd.DataFrame(data, columns=[d[0] for d in self.cursor.description])
 
     def update_records(self, table_name:str, columns:Dict[str, Union[str,float,int,datetime]], **kwargs):
         assert len(columns)>0, "At least one column needs to be updated!"
