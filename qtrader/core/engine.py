@@ -462,6 +462,14 @@ class Engine:
         """all broker positions"""
         return self.market.get_all_broker_positions()
 
+    def get_all_orders(self)->List[Order]:
+        """all orders"""
+        return self.market.get_all_orders()
+
+    def get_all_deals(self)->List[Deal]:
+        """all deals"""
+        return self.market.get_all_deals()
+
     def get_quote(self, security:Stock)->Quote:
         """获取最新quote (回测模式下暂不支持）"""
         return self.market.get_quote(security)
@@ -555,3 +563,11 @@ def persist_position(engine):
             quantity=position_data.quantity,
             update_time=position_data.update_time
         )
+
+def persist_order(engine):
+    """订单有任何更新，就写入数据库"""
+    pass
+
+def persist_deal(engine):
+    """成交有任何更新，就写入数据库"""
+    pass

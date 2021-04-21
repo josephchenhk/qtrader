@@ -78,6 +78,22 @@ class BaseGateway(ABC):
         """获取券商所有持仓"""
         raise NotImplementedError("get_all_broker_positions has not been implemented")
 
+    def get_all_orders(self) -> List[Order]:
+        """获取当前运行策略的所有订单"""
+        all_orders = []
+        for orderid, order in self.orders.queue.items():
+            order.orderid = orderid
+            all_orders.append(order)
+        return all_orders
+
+    def get_all_deals(self) -> List[Deal]:
+        """获取当前运行策略的所有成交"""
+        all_deals = []
+        for dealid, deal in self.deals.queue.items():
+            deal.dealid = dealid
+            all_deals.append(deal)
+        return all_deals
+
     def get_quote(self, security:Stock)->Quote:
         """获取报价"""
         raise NotImplementedError("get_quote has not been implemented")

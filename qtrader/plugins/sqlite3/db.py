@@ -150,11 +150,45 @@ class DB:
         self.execute(sql)
 
     def create_order_table(self):
-        pass
+        sql = (
+            "CREATE TABLE IF NOT EXISTS order " +
+            "(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+            "broker_order_id VARCHAR(50) NOT NULL, " +
+            "balance_id INTEGER NOT NULL, "
+            "security_name VARCHAR(20) NOT NULL, " +
+            "security_code VARCHAR(20) NOT NULL, " +
+            "price DOUBLE NOT NULL, " +
+            "quantity INTEGER NOT NULL, " +
+            "direction VARCHAR(20) NOT NULL, " +
+            "offset VARCHAR(20) NOT NULL, " +
+            "order_type VARCHAR(20) NOT NULL, "
+            "create_time DATETIME NOT NULL, " 
+            "update_time DATETIME NOT NULL, " 
+            "filled_avg_price DOUBLE NOT NULL, " +
+            "filled_quantity INTEGER NOT NULL, " +
+            "status VARCHAR(20) NOT NULL, "  
+            "remark VARCHAR(300))"
+        )
+        self.execute(sql)
 
     def create_deal_table(self):
-        pass
-
+        sql = (
+            "CREATE TABLE IF NOT EXISTS deal " +
+            "(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+            "broker_deal_id VARCHAR(50) NOT NULL, " +
+            "order_id VARCHAR(50) NOT NULL, " +
+            "balance_id INTEGER NOT NULL, "
+            "security_name VARCHAR(20) NOT NULL, " +
+            "security_code VARCHAR(20) NOT NULL, " +
+            "direction VARCHAR(20) NOT NULL, " +
+            "offset VARCHAR(20) NOT NULL, " +
+            "order_type VARCHAR(20) NOT NULL, " +
+            "update_time DATETIME NOT NULL, " 
+            "filled_avg_price DOUBLE NOT NULL, " +
+            "filled_quantity INTEGER NOT NULL, " +
+            "remark VARCHAR(300))"
+        )
+        self.execute(sql)
 
 
 

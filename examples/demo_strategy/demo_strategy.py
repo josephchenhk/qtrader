@@ -49,6 +49,12 @@ class DemoStrategy(BaseStrategy):
         positions = self.engine.get_all_positions()
         self.engine.log.info(f"{positions}")
 
+        # check orders
+        all_orders = self.engine.get_all_orders()
+
+        # check deals
+        all_deals = self.engine.get_all_deals()
+
         # send orders
         for security in cur_data:
 

@@ -24,7 +24,7 @@ from qtrader.core.order import Order
 from qtrader.core.position import Position, PositionData
 from qtrader.core.security import Stock
 from qtrader.core.data import Bar, OrderBook, Quote, CapitalDistribution
-from qtrader.core.utility import Time, try_parsing_datetime
+from qtrader.core.utility import Time, try_parsing_datetime, BlockingDict
 from qtrader.config import GATEWAY, DATA_PATH
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
