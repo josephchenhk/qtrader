@@ -151,7 +151,7 @@ class DB:
 
     def create_order_table(self):
         sql = (
-            "CREATE TABLE IF NOT EXISTS order " +
+            "CREATE TABLE IF NOT EXISTS trading_order " +
             "(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
             "broker_order_id VARCHAR(50) NOT NULL, " +
             "balance_id INTEGER NOT NULL, "
@@ -173,10 +173,11 @@ class DB:
 
     def create_deal_table(self):
         sql = (
-            "CREATE TABLE IF NOT EXISTS deal " +
+            "CREATE TABLE IF NOT EXISTS trading_deal " +
             "(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
             "broker_deal_id VARCHAR(50) NOT NULL, " +
-            "order_id VARCHAR(50) NOT NULL, " +
+            "broker_order_id VARCHAR(50) NOT NULL, " +
+            "order_id INTEGER NOT NULL, " +
             "balance_id INTEGER NOT NULL, "
             "security_name VARCHAR(20) NOT NULL, " +
             "security_code VARCHAR(20) NOT NULL, " +
@@ -195,9 +196,12 @@ class DB:
 
 if __name__=="__main__":
     db = DB()
-    db.delete_records(table_name="balance")
-    db.delete_records(table_name="position")
-    # db.delete_table("balance")
+    # db.delete_records(table_name="balance")
+    # db.delete_records(table_name="position")
+    db.delete_table("balance")
+    db.delete_table("position")
+    db.delete_table("trading_order")
+    db.delete_table("trading_deal")
     # db.create_balance_table()
 
     db.insert_records(

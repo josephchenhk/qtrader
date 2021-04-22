@@ -32,7 +32,7 @@ class DemoStrategy(BaseStrategy):
         if engine.market.trade_mode==TradeMode.BACKTEST:
             self.sleep_time = 0
         else:
-            self.sleep_time = 10
+            self.sleep_time = 15
 
     def init_strategy(self):
         pass
@@ -65,12 +65,13 @@ class DemoStrategy(BaseStrategy):
             self.engine.log.info(orderbook)
             self.engine.log.info(data)
 
-            if isinstance(data, dict): price = data["k1m"].close
-            elif isinstance(data, Bar): price = data.close
-            else: raise ValueError(f"data不是合法的格式！")
+            # if isinstance(data, dict): price = data["k1m"].close
+            # elif isinstance(data, Bar): price = data.close
+            # else: raise ValueError(f"data不是合法的格式！")
+
             orderid = self.engine.send_order(
                 security=security,
-                price=price,
+                price=quote.last_price,
                 quantity=security.lot_size,
                 direction=Direction.LONG,
                 offset=Offset.OPEN,

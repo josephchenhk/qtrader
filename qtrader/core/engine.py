@@ -11,7 +11,7 @@ from typing import List, Union, Any, Dict
 from threading import Thread
 
 from qtrader.core.balance import AccountBalance
-from qtrader.core.constants import Direction, Offset, OrderType, TradeMode
+from qtrader.core.constants import Direction, Offset, OrderType, TradeMode, OrderStatus
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
 from qtrader.core.portfolio import Portfolio
@@ -30,9 +30,7 @@ class Engine:
 
     """Execution engine"""
 
-    def __init__(self,
-            market:BaseGateway,
-        ):
+    def __init__(self, market:BaseGateway):
         self.market = market
         self.log = logger
         self.plugins = dict()
@@ -42,20 +40,23 @@ class Engine:
         if (market.trade_mode in (TradeMode.SIMULATE, TradeMode.LIVETRADE)) and ("sqlite3" in self.plugins):
             DB = getattr(self.plugins["sqlite3"], "DB")
             self.db = DB()
-
             # 新建线程，定期将数据持久化到数据库
             self.persist_active: bool = False
             self._persist_t: Thread = Thread(target=persist_data, args=(self,), name="persist_thread")
 
     def start(self):
+        """启动engine，在事件循环开始之前启动"""
         if self.has_db():
             self.persist_active = True
             self._persist_t.start()
+        self.log.info("Engine starts")
 
     def stop(self):
+        """停止engine，在事件循环结束之后/或者手动停止循环之后"""
         if self.has_db():
             self.persist_active = False
             self.db.close()
+        self.log.info("Engine stops")
 
     def init_portfolio(self, strategy_account:str, strategy_version:str, init_strategy_cash:float):
         """初始化投资组合相关信息"""
@@ -76,6 +77,74 @@ class Engine:
         """判断是否启动db"""
         return hasattr(self, "db")
 
+    def get_balance_id(self):
+        """获取数据库里面的balance id"""
+        balance_df = self.db.select_records(
+            table_name="balance",
+            broker_name=GATEWAY["broker_name"],
+            broker_environment=self.market.trade_mode.name,
+            broker_account=GATEWAY["broker_account"],
+            strategy_account=self.strategy_account,
+            strategy_version=self.strategy_version,
+        )
+        if balance_df.empty:
+            self.log.info(
+                "[get_balance_id] Balance id is not available in the DB yet, need to sync balance first."
+            )
+            return
+        assert balance_df.shape[0] == 1, f"There are more than 1 records found in Balance. Check\n{balance_df}"
+        balance_id = balance_df["id"].values[0]
+        return balance_id
+
+    def get_db_order(self, balance_id:int, broker_order_id:str)->Order:
+        """获取数据库的order记录（如果数据库无记录，返回None）"""
+        order_df = self.db.select_records(
+            table_name="trading_order",
+            balance_id=balance_id,
+            broker_order_id=broker_order_id,
+        )
+        if order_df.empty:
+            return None
+        assert order_df.shape[0]==1, f"There are more than one rows in order: balance_id={balance_id} broker_order_id={broker_order_id}"
+        order = Order(
+            security = Stock(stock_name=order_df["security_name"].values[0], code=order_df["security_code"].values[0]),
+            price = order_df["price"].values[0],
+            quantity = order_df["quantity"].values[0],
+            direction = convert_direction_db2qt(order_df["direction"].values[0]),
+            offset = convert_offset_db2qt(order_df["offset"].values[0]),
+            order_type = convert_order_type_db2qt(order_df["order_type"].values[0]),
+            create_time = datetime.strptime(order_df["create_time"].values[0], "%Y-%m-%d %H:%M:%S"),
+            updated_time = datetime.strptime(order_df["update_time"].values[0], "%Y-%m-%d %H:%M:%S"),
+            filled_avg_price = order_df["filled_avg_price"].values[0],
+            filled_quantity = order_df["filled_quantity"].values[0],
+            status = convert_order_status_db2qt(order_df["status"].values[0]),
+            orderid = order_df["broker_order_id"].values[0],
+        )
+        return order
+
+    def get_db_deal(self, balance_id:int, broker_deal_id:str):
+        """获取数据库的deal记录（如果数据库无记录，返回None）"""
+        deal_df = self.db.select_records(
+            table_name="trading_deal",
+            balance_id=balance_id,
+            broker_deal_id=broker_deal_id,
+        )
+        if deal_df.empty:
+            return None
+        assert deal_df.shape[0]==1, f"There are more than one rows in order: balance_id={balance_id} broker_order_id={broker_order_id}"
+        deal = Deal(
+            security = Stock(stock_name=deal_df["security_name"].values[0], code=deal_df["security_code"].values[0]),
+            direction = convert_direction_db2qt(deal_df["direction"].values[0]),
+            offset = convert_offset_db2qt(deal_df["offset"].values[0]),
+            order_type = convert_order_type_db2qt(deal_df["order_type"].values[0]),
+            updated_time = datetime.strptime(deal_df["update_time"].values[0], "%Y-%m-%d %H:%M:%S"),
+            filled_avg_price = deal_df["filled_avg_price"].values[0],
+            filled_quantity = deal_df["filled_quantity"].values[0],
+            dealid = deal_df["broker_deal_id"].values[0],
+            orderid = deal_df["broker_order_id"].values[0],
+        )
+        return deal
+
     def get_db_balance(self, strategy_account:str, strategy_version:str)->AccountBalance:
         """从数据库加载balance（如果数据库无记录，返回None）"""
         balance_df = self.db.select_records(
@@ -88,7 +157,7 @@ class Engine:
         )
         if balance_df.empty:
             return None
-        assert balance_df.shape[0]==1, f"There are more than one rows in db: {self.strategy_account} {self.strategy_version}"
+        assert balance_df.shape[0]==1, f"There are more than one rows in balance: {self.strategy_account} {self.strategy_version}"
         account_balance = AccountBalance(
             cash=balance_df["cash"].values[0],
             power=balance_df["power"].values[0],
@@ -163,7 +232,7 @@ class Engine:
                 max_power_short=-1,
                 net_cash_power=-1,
                 update_time=datetime.now(),
-                remark="N/A"
+                remark=""
             )
             # 再创建策略balance记录
             self.db.insert_records(
@@ -182,7 +251,7 @@ class Engine:
                 max_power_short = -1,
                 net_cash_power = -1,
                 update_time = datetime.now(),
-                remark = "N/A"
+                remark = ""
             )
         else:
             # update default strategy
@@ -492,9 +561,59 @@ def convert_direction_db2qt(direction:str) -> Direction:
     elif direction=="NET":
         return Direction.NET
     else:
-        raise ValueError(f"direction {direction} in database is invalid!")
+        raise ValueError(f"Direction {direction} in database is invalid!")
 
-def persist_data(engine):
+def convert_offset_db2qt(offset:str)->Offset:
+    """将交易offset由string转换成qtrader的Offset类"""
+    if offset=="NONE":
+        return Offset.NONE
+    elif offset=="OPEN":
+        return Offset.OPEN
+    elif offset=="CLOSE":
+        return Offset.CLOSE
+    elif offset=="CLOSETODAY":
+        return Offset.CLOSETODAY
+    elif offset=="CLOSEYESTERDAY":
+        return Offset.CLOSEYESTERDAY
+    else:
+        raise ValueError(f"Offset {offset} in database is invalid!")
+
+def convert_order_type_db2qt(order_type:str)->OrderType:
+    """将订单类型由string转换成qtrader的OrderType类"""
+    if order_type=="LIMIT":
+        return OrderType.LIMIT
+    elif order_type=="MARKET":
+        return OrderType.MARKET
+    elif order_type=="STOP":
+        return OrderType.STOP
+    elif order_type=="FAK":
+        return OrderType.FAK
+    elif order_type=="FOK":
+        return OrderType.FOK
+    else:
+        raise ValueError(f"Order Type {order_type} in database is invalid!")
+
+def convert_order_status_db2qt(order_status:str)->OrderStatus:
+    """将订单状态由string转换成qtrader的OrderStatus类"""
+    if order_status=="UNKNOWN":
+        return OrderStatus.UNKNOWN
+    elif order_status=="SUBMITTED":
+        return OrderStatus.SUBMITTED
+    elif order_status=="FILLED":
+        return OrderStatus.FILLED
+    elif order_status=="PART_FILLED":
+        return OrderStatus.PART_FILLED
+    elif order_status=="CANCELLED":
+        return OrderStatus.CANCELLED
+    elif order_status=="FAILED":
+        return OrderStatus.FAILED
+    else:
+        raise ValueError(f"Order Status {order_status} in database is invalid!")
+
+def persist_data(engine, time_interval=5):
+    """定期更新数据库里的数据"""
+    # 将主线程的数据库连接暂时保存起来
+    db_main = engine.db
     # 在新线程里重新建立数据库连接
     DB = getattr(engine.plugins["sqlite3"], "DB")
     setattr(engine, "db", DB())
@@ -504,8 +623,14 @@ def persist_data(engine):
         engine.log.info("[Account balance] is persisted")
         persist_position(engine)
         engine.log.info("[Position] is persisted")
-        sleep(5)
+        persist_order(engine)
+        engine.log.info("[Order] is persisted")
+        persist_deal(engine)
+        engine.log.info("[Deal] is persisted")
+        sleep(time_interval)
     engine.db.close()
+    # 还原主线程的数据库连接
+    setattr(engine, "db", db_main)
     engine.log.info("Gracefully stop persisting data.")
 
 def persist_account_balance(engine):
@@ -531,21 +656,7 @@ def persist_account_balance(engine):
 
 def persist_position(engine):
     """头寸有任何更新，就写入数据库"""
-    balance_df = engine.db.select_records(
-        table_name="balance",
-        broker_name=GATEWAY["broker_name"],
-        broker_environment=engine.market.trade_mode.name,
-        broker_account=GATEWAY["broker_account"],
-        strategy_account=engine.strategy_account,
-        strategy_version=engine.strategy_version,
-    )
-    if balance_df.empty:
-        engine.log.info(
-            "[persist_position] Account Balance is not available in the DB yet, need to sync balance first."
-        )
-        return
-    assert balance_df.shape[0] == 1, f"There are more than 1 records found in Balance. Check\n{balance_df}"
-    balance_id = balance_df["id"].values[0]
+    balance_id = engine.get_balance_id()
     db_position = engine.get_db_position(balance_id=balance_id)
     if db_position:
         engine.db.delete_records(
@@ -566,8 +677,77 @@ def persist_position(engine):
 
 def persist_order(engine):
     """订单有任何更新，就写入数据库"""
-    pass
+    balance_id = engine.get_balance_id()
+    orders = engine.get_all_orders()
+    engine.log.info(orders)
+    for order in orders:
+        db_order = engine.get_db_order(balance_id=balance_id, broker_order_id=order.orderid)
+        if db_order is None:
+            engine.db.insert_records(
+                table_name="trading_order",
+                broker_order_id=order.orderid,
+                balance_id=balance_id,
+                security_name=order.security.stock_name,
+                security_code=order.security.code,
+                price=order.price,
+                quantity=order.quantity,
+                direction=order.direction.name,
+                offset=order.offset.name,
+                order_type=order.order_type.name,
+                create_time=order.create_time,
+                update_time=order.updated_time,
+                filled_avg_price=order.filled_avg_price,
+                filled_quantity=order.filled_quantity,
+                status=order.status.name,
+                remark="",
+            )
+        elif order.status!=db_order.status:
+            engine.db.update_records(
+                table_name="trading_order",
+                columns=dict(
+                    update_time=order.updated_time,
+                    filled_avg_price=order.filled_avg_price,
+                    filled_quantity=order.filled_quantity,
+                    status=order.status.name,
+                ),
+                balance_id=balance_id,
+                broker_order_id=order.orderid
+            )
 
 def persist_deal(engine):
     """成交有任何更新，就写入数据库"""
-    pass
+    balance_id = engine.get_balance_id()
+    deals = engine.get_all_deals()
+    engine.log.info(deals)
+    for deal in deals:
+        db_deal = engine.get_db_deal(balance_id=balance_id, broker_deal_id=deal.dealid)
+        if db_deal is None:
+            # 同步order在同步deal之前，所以这里应该是一定找得到
+            order_df = engine.db.select_records(
+                table_name="trading_order",
+                balance_id=balance_id,
+                broker_order_id=deal.orderid,
+            )
+            assert not order_df.empty, (
+                f"Records not found in order table. Check balance_id={balance_id}, broker_order_id={deal.orderid}"
+            )
+            assert order_df.shape[0]==1, (
+                f"More than 1 records were found in order table. Check balance_id={balance_id}, broker_order_id={deal.orderid}"
+            )
+            order_id = order_df["id"].values[0]
+            engine.db.insert_records(
+                table_name="trading_deal",
+                broker_deal_id=deal.dealid,
+                broker_order_id=deal.orderid,
+                order_id=order_id,
+                balance_id=balance_id,
+                security_name=deal.security.stock_name,
+                security_code=deal.security.code,
+                direction=deal.direction.name,
+                offset=deal.offset.name,
+                order_type=deal.order_type.name,
+                update_time=deal.updated_time,
+                filled_avg_price=deal.filled_avg_price,
+                filled_quantity=deal.filled_quantity,
+                remark="",
+            )
