@@ -138,14 +138,14 @@ class BarEventEngine:
                 cur_data[security] = data
 
             # 运行策略
-            # self.strategy.on_bar(cur_data)
+            self.strategy.on_bar(cur_data)
 
             for field in self.recorder.get_recorded_fields():
                 value = getattr(self.strategy, f"get_{field}")()
                 self.recorder.write_record(field, value)
 
             # 通过控件来中断程序运行：
-            if True:
+            if False:
                 market.close()
                 engine.stop()
                 engine.log.info("程序被人手终止")
