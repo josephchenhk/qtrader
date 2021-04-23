@@ -174,9 +174,9 @@ class Engine:
             table_name="position",
             balance_id=balance_id,
         )
-        position = Position()
         if position_df.empty:
             return None
+        position = Position()
         for _, row in position_df.iterrows():
             security = Stock(code=row["security_code"], stock_name=row["security_name"])
             direction = convert_direction_db2qt(row["direction"])
