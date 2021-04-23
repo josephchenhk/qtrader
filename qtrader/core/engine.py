@@ -25,6 +25,7 @@ from qtrader.config import ACTIVATED_PLUGINS
 from qtrader.config import GATEWAY
 from qtrader.gateways import BaseGateway
 
+PERSIST_TIME_INTERVAL = 5
 
 class Engine:
 
@@ -55,6 +56,7 @@ class Engine:
         """停止engine，在事件循环结束之后/或者手动停止循环之后"""
         if self.has_db():
             self.persist_active = False
+            sleep(PERSIST_TIME_INTERVAL+2) # wait for the persist thread stop
             self.db.close()
         self.log.info("Engine stops")
 
@@ -610,7 +612,7 @@ def convert_order_status_db2qt(order_status:str)->OrderStatus:
     else:
         raise ValueError(f"Order Status {order_status} in database is invalid!")
 
-def persist_data(engine, time_interval=5):
+def persist_data(engine, time_interval=PERSIST_TIME_INTERVAL):
     """定期更新数据库里的数据"""
     # 将主线程的数据库连接暂时保存起来
     db_main = engine.db
@@ -656,24 +658,84 @@ def persist_account_balance(engine):
 
 def persist_position(engine):
     """头寸有任何更新，就写入数据库"""
+    engine_position = engine.portfolio.position
+    engine_positions = engine_position.get_all_positions()
     balance_id = engine.get_balance_id()
     db_position = engine.get_db_position(balance_id=balance_id)
-    if db_position:
-        engine.db.delete_records(
-            table_name="position",
-            balance_id=balance_id,
-        )
-    for position_data in engine.portfolio.position.get_all_positions():
-        engine.db.insert_records(
-            table_name="position",
-            balance_id=balance_id,
-            security_name=position_data.security.stock_name,
-            security_code=position_data.security.code,
-            direction=position_data.direction.name,
-            holding_price=position_data.holding_price,
-            quantity=position_data.quantity,
-            update_time=position_data.update_time
-        )
+    # if db_position:
+    #     engine.db.delete_records(
+    #         table_name="position",
+    #         balance_id=balance_id,
+    #     )
+    # for position_data in engine.portfolio.position.get_all_positions():
+    #     engine.db.insert_records(
+    #         table_name="position",
+    #         balance_id=balance_id,
+    #         security_name=position_data.security.stock_name,
+    #         security_code=position_data.security.code,
+    #         direction=position_data.direction.name,
+    #         holding_price=position_data.holding_price,
+    #         quantity=position_data.quantity,
+    #         update_time=position_data.update_time
+    #     )
+
+    if db_position is None:
+        for position_data in engine_positions:
+            engine.db.insert_records(
+                table_name="position",
+                balance_id=balance_id,
+                security_name=position_data.security.stock_name,
+                security_code=position_data.security.code,
+                direction=position_data.direction.name,
+                holding_price=position_data.holding_price,
+                quantity=position_data.quantity,
+                update_time=position_data.update_time
+            )
+    else:
+        # 将存在与db，但在内存记录里找不到的position删除，因为该头寸已经平掉
+        for db_position_data in db_position.get_all_positions():
+            engine_position_data = engine.portfolio.position.get_position(
+                security=db_position_data.security,
+                direction=db_position_data.direction,
+            )
+            if engine_position_data is None:
+                engine.db.delete_records(
+                    table_name="position",
+                    balance_id=balance_id,
+                    security_name=db_position_data.security.stock_name,
+                    security_code=db_position_data.security.code,
+                    direction=db_position_data.direction.name,
+                )
+        # 现在数据库的记录是内存记录的子集了。根据内存记录里的position数据，更新数据库的记录
+        for position_data in engine_positions:
+            db_position_data = db_position.get_position(
+                security=position_data.security,
+                direction=position_data.direction
+            )
+            if db_position_data is None:
+                engine.db.insert_records(
+                    table_name="position",
+                    balance_id=balance_id,
+                    security_name=position_data.security.stock_name,
+                    security_code=position_data.security.code,
+                    direction=position_data.direction.name,
+                    holding_price=position_data.holding_price,
+                    quantity=position_data.quantity,
+                    update_time=position_data.update_time
+                )
+            elif position_data.quantity!=db_position_data.quantity:
+                engine.db.update_records(
+                    table_name="position",
+                    columns=dict(
+                        holding_price=position_data.holding_price,
+                        quantity=position_data.quantity,
+                        update_time=position_data.update_time
+                    ),
+                    balance_id=balance_id,
+                    security_name=position_data.security.stock_name,
+                    security_code=position_data.security.code,
+                    direction=position_data.direction.name,
+                )
 
 def persist_order(engine):
     """订单有任何更新，就写入数据库"""

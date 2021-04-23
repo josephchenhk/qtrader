@@ -24,3 +24,6 @@ class Stock:
     def __eq__(self, other):
         return (self.code==other.code) and (self.stock_name==other.stock_name)
 
+    def __hash__(self):
+        return hash(f"{self.stock_name}|{self.code}")
+

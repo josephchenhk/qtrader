@@ -69,18 +69,23 @@ class DemoStrategy(BaseStrategy):
             # elif isinstance(data, Bar): price = data.close
             # else: raise ValueError(f"data不是合法的格式！")
 
-            orderid = self.engine.send_order(
+            order_instruct = dict(
                 security=security,
                 price=quote.last_price,
                 quantity=security.lot_size,
-                direction=Direction.LONG,
+                direction=Direction.SHORT,
                 offset=Offset.OPEN,
                 order_type=OrderType.LIMIT
             )
+            self.engine.log.info(f"提交订单:\n{order_instruct}")
+            orderid = self.engine.send_order(**order_instruct)
+            if orderid=="":
+                self.engine.log.info("提交订单失败")
+                return
 
             sleep(self.sleep_time)
             order = self.engine.get_order(orderid)
-            self.engine.log.info(f"发出订单{order}")
+            self.engine.log.info(f"订单{orderid}已发出:{order}")
 
             deals = self.engine.find_deals_with_orderid(orderid)
             for deal in deals:
