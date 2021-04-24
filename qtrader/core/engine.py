@@ -485,6 +485,8 @@ class Engine:
         """
         获取历史时间段的数据 (传入指定dfield)
         """
+        if dtype is None:
+            dtype = self.market.DTYPES.get(dfield)
         df = _get_data(security=security, start=start, end=end, dfield=dfield, dtype=dtype)
         if dtype is None:
             time_cols = [c for c in df.columns if "time" in c or "Time" in c]

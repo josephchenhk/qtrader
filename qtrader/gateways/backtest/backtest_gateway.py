@@ -42,6 +42,9 @@ class BacktestGateway(BaseGateway):
     # 名字
     NAME = "BACKTEST"
 
+    # 指定的数据字段
+    DTYPES = None
+
     def __init__(self,
                  securities:List[Stock],
                  start:datetime,
@@ -59,6 +62,7 @@ class BacktestGateway(BaseGateway):
         :param fees:
         :return:
         """
+        self.DTYPES = dtypes
         assert set(dtypes.keys())==set(DATA_PATH.keys()), (
             f"在{self.__class__.__name__}的__init__函数里，"
             f"输入参数dtypes的键值必须与DATA_PATH里的设定一致，dtypes需输入以下数据：{','.join(DATA_PATH.keys())}，"
