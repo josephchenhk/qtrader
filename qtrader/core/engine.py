@@ -445,9 +445,10 @@ class Engine:
                         start: datetime,
                         end: datetime,
                         **kwargs,
-        )->Dict[str, List[Any]]:
+        )->Dict[str, List[Any]] or Bar or CapitalDistribution:
         """
         获取历史时间段的数据
+        如传入dfield参数，e.g., dfield="k1m" 或者 dfield="capdist"，则获取相应的bar或capitaldistribution数据
         """
         if kwargs:
             assert "dfield" in kwargs, f"`dfield` should be passed in as kwargs, but kwargs={kwargs}"
