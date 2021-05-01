@@ -65,7 +65,17 @@ class BarEventEngineRecorder:
                 df[var] = v
             elif self.recorded_methods[var]=="override":
                 df[var] = None
-                df.iloc[len(dt)-1, df.columns.get_loc(var)] = str(v)
+
+                if isinstance(v, list) and len(v)>0 and isinstance(v[0][0], datetime) and isinstance(v[0][1], str):
+                    for i in range(len(v)):
+                        date_time = v[i][0]
+                        idx = df[df["datetime"] == date_time].index[0]
+                        if df.loc[idx, var] is None:
+                            df.loc[idx, var] = v[i][1]
+                        elif isinstance(df.loc[idx, var], str):
+                            df.loc[idx, var] = df.loc[idx, var] + "; " + v[i][1]
+                else:
+                    df.iloc[len(dt)-1, df.columns.get_loc(var)] = str(v)
         df.to_csv(f"{path}/{now}/result.csv", index=False)
 
 
