@@ -58,6 +58,6 @@ def plot_pnl(datetime:List[datetime], portfolio_value:List[float], *args:List, *
         path = "results"
     else:
         path = kwargs["path"]
-    now = sorted(os.listdir(path))[-1]
+    now = sorted(next(os.walk('results'))[1])[-1]
     plt.savefig(f"{path}/{now}/pnl.png")
     plt.show()
