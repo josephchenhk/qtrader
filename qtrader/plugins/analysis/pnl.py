@@ -59,5 +59,22 @@ def plot_pnl(datetime:List[datetime], portfolio_value:List[float], *args:List, *
     else:
         path = kwargs["path"]
     now = sorted(next(os.walk('results'))[1])[-1]
-    plt.savefig(f"{path}/{now}/pnl.png")
+    plt.savefig(f"{path}/{now}/portfolio_value.png")
+    plt.show()
+
+    nav = [pv/portfolio_value[0] for pv in portfolio_value]
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    formatter = DatetimeFormatter(datetime)
+    ax1.xaxis.set_major_formatter(formatter)
+    ax1.plot(range(len(datetime)), nav, color='b')
+    X_ticks = get_xticks(datetime)
+    plt.xticks(X_ticks)
+    plt.grid()
+    fig.autofmt_xdate()
+    if len(args)>0:
+        ax2 = ax1.twinx()
+        for arg in args:
+            ax2.plot(range(len(datetime)), arg)
+    plt.savefig(f"{path}/{now}/nav.png")
     plt.show()
