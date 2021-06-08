@@ -150,7 +150,7 @@ qtrader/log/*
 results/*
 
 # main
-main-tmp.py
+main_pairtrading.py
 main_momentum.py
 main_capital.py
 

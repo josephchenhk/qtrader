@@ -2,7 +2,7 @@
 # @Time    : 17/3/2021 3:59 PM
 # @Author  : Joseph Chen
 # @Email   : josephchenhk@gmail.com
-# @FileName: main-tmp.py
+# @FileName: main_pairtrading.py
 # @Software: PyCharm
 
 from datetime import datetime
