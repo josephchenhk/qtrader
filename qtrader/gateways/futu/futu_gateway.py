@@ -25,11 +25,11 @@ from qtrader.core.position import Position, PositionData
 from qtrader.core.security import Stock
 from qtrader.core.data import Bar, OrderBook, Quote, CapitalDistribution
 from qtrader.core.utility import Time, try_parsing_datetime, BlockingDict
-from qtrader.config import GATEWAY, DATA_PATH
+from qtrader.config import GATEWAYS, DATA_PATH
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
 
-FUTU = GATEWAY
+FUTU = GATEWAYS["Futu"]
 
 class FutuHKEquityFees(BaseFees):
     """
@@ -156,12 +156,14 @@ class FutuGateway(BaseGateway):
 
 
     def __init__(self,
-                 securities: List[Stock],
-                 start: datetime = None,
-                 end: datetime = None,
-                 fees: BaseFees = FutuHKEquityFees,
+            securities:List[Stock],
+            gateway_name:str,
+            start:datetime=None,
+            end:datetime=None,
+            fees:BaseFees=FutuHKEquityFees,
         ):
-        super().__init__(securities)
+        super().__init__(securities, gateway_name)
+
         self.fees = fees
         self.start = start
         self.end = end

@@ -15,6 +15,7 @@ from qtrader.core.order import Order
 from qtrader.core.position import PositionData
 from qtrader.core.security import Stock
 from qtrader.core.utility import BlockingDict
+from qtrader.config import GATEWAYS
 
 
 class BaseGateway(ABC):
@@ -23,9 +24,14 @@ class BaseGateway(ABC):
     Abstract gateway class for creating gateways connection
     to different trading systems.
     """
-    def __init__(self, securities:List[Stock]):
+    broker_name = ""
+    broker_account = ""
+    def __init__(self, securities:List[Stock], gateway_name="Backtest"):
         self._market_datetime = None
         self.securities = securities
+        assert gateway_name not in GATEWAYS, f"{gateway_name} is NOT in GATEWAYS, please check your config file!"
+        self.broker_account = GATEWAYS[gateway_name]["broker_name"]
+        self.broker_account = GATEWAYS[gateway_name]["broker_account"]
         self.orders = BlockingDict()
         self.deals = BlockingDict()
         self.quote = BlockingDict()

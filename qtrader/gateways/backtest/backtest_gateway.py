@@ -46,11 +46,12 @@ class BacktestGateway(BaseGateway):
     DTYPES = None
 
     def __init__(self,
-                 securities:List[Stock],
-                 start:datetime,
-                 end:datetime,
-                 dtypes:Dict[str, List[str]]=dict(k1m=["time_key", "open", "high", "low", "close", "volume"]),
-                 fees:BaseFees=FutuHKEquityFees, # 默认是港股富途收费
+            securities:List[Stock],
+            gateway_name:str,
+            start:datetime,
+            end:datetime,
+            dtypes:Dict[str, List[str]]=dict(k1m=["time_key", "open", "high", "low", "close", "volume"]),
+            fees:BaseFees=FutuHKEquityFees, # 默认是港股富途收费
         )->Dict[Stock, Iterator]:
         """
         历史数据分派器
@@ -68,7 +69,7 @@ class BacktestGateway(BaseGateway):
             f"输入参数dtypes的键值必须与DATA_PATH里的设定一致，dtypes需输入以下数据：{','.join(DATA_PATH.keys())}，"
             f"但目前只有：{','.join(dtypes.keys())}"
         )
-        super().__init__(securities)
+        super().__init__(securities, gateway_name)
         self.fees = fees
         data_iterators = dict()
         prev_cache = dict()
