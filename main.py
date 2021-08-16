@@ -18,34 +18,36 @@ from examples.demo_strategy import DemoStrategy
 if __name__=="__main__":
 
     stock_list = [
-        Stock(code="HK.01157", lot_size=200, stock_name="中联重科"),
+        Stock(code="HK.01157", lot_size=200, security_name="中联重科"),
     ]
 
-    market = BacktestGateway(
+    backtest_gateway = BacktestGateway(
         securities=stock_list,
         start=datetime(2021, 3, 15, 9, 30, 0, 0),
         end=datetime(2021, 3, 17, 16, 0, 0, 0),
+        gateway_name="Backtest"
     )
-    market.set_trade_mode(TradeMode.BACKTEST)
+    backtest_gateway.set_trade_mode(TradeMode.BACKTEST)
 
-    # market = FutuGateway(
+    # futu_gateway = FutuGateway(
     #     securities=stock_list,
-    #     end=datetime(2021, 4, 21, 16, 0, 0, 0),
+    #     end=datetime(2021, 8, 14, 16, 0, 0, 0),
+    #     gateway_name="Futu"
     # )
-    # market.set_trade_mode(TradeMode.SIMULATE)
+    # futu_gateway.set_trade_mode(TradeMode.SIMULATE)
 
 
     # 执行引擎
-    engine = Engine(market)
+    engine = Engine(gateways={"Backtest":backtest_gateway})
 
     # 初始化策略
     strategy_account = "DemoStrategy"
     strategy_version = "1.0"
     strategy = DemoStrategy(
-        securities=stock_list,
+        securities={"Backtest":stock_list},
         strategy_account=strategy_account,
         strategy_version=strategy_version,
-        init_strategy_cash=10000,
+        init_strategy_cash={"Backtest":10000},
         engine=engine)
     strategy.init_strategy()
 

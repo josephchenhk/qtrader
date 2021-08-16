@@ -29,7 +29,7 @@ class BaseGateway(ABC):
     def __init__(self, securities:List[Stock], gateway_name="Backtest"):
         self._market_datetime = None
         self.securities = securities
-        assert gateway_name not in GATEWAYS, f"{gateway_name} is NOT in GATEWAYS, please check your config file!"
+        assert gateway_name in GATEWAYS, f"{gateway_name} is NOT in GATEWAYS, please check your config file!"
         self.broker_account = GATEWAYS[gateway_name]["broker_name"]
         self.broker_account = GATEWAYS[gateway_name]["broker_account"]
         self.orders = BlockingDict()

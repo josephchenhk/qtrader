@@ -10,12 +10,18 @@ from typing import Dict, List
 from qtrader.core.constants import Direction, Offset, OrderType, TradeMode
 from qtrader.core.data import Bar
 from qtrader.core.engine import Engine
-from qtrader.core.security import Stock
+from qtrader.core.security import Stock, Security
 from qtrader.core.strategy import BaseStrategy
 
 class DemoStrategy(BaseStrategy):
 
-    def __init__(self, securities:List[Stock], strategy_account:str, strategy_version:str, init_strategy_cash:float, engine:Engine):
+    def __init__(self,
+            securities:Dict[str,List[Stock]],
+            strategy_account:str,
+            strategy_version:str,
+            init_strategy_cash:Dict[str,float],
+            engine:Engine
+        ):
         super().__init__(
             engine=engine,
             strategy_account=strategy_account,
@@ -27,71 +33,81 @@ class DemoStrategy(BaseStrategy):
         # 执行引擎
         self.engine = engine
         # 投资组合管理
-        self.portfolio = engine.portfolio
+        self.portfolios = engine.portfolios
         # 等待执行时间
-        if engine.market.trade_mode==TradeMode.BACKTEST:
-            self.sleep_time = 0
-        else:
-            self.sleep_time = 15
+        self.sleep_time = 0
+        for gateway_name in engine.gateways:
+            if engine.gateways[gateway_name].trade_mode!=TradeMode.BACKTEST:
+                self.sleep_time = 15
 
     def init_strategy(self):
         pass
 
-    def on_bar(self, cur_data:Dict[Stock, Bar]):
+    def on_bar(self, cur_data:Dict[str,Dict[Security, Bar]]):
 
         self.engine.log.info("-"*30 + "进入on_bar" + "-"*30)
 
-        # check balance
-        balance = self.engine.get_balance()
-        self.engine.log.info(f"{balance}")
+        for gateway_name in self.engine.gateways:
 
-        # check position
-        positions = self.engine.get_all_positions()
-        self.engine.log.info(f"{positions}")
+            if gateway_name not in cur_data:
+                continue
 
-        # check orders
-        all_orders = self.engine.get_all_orders()
+            # check balance
+            balance = self.engine.get_balance(gateway_name=gateway_name )
+            self.engine.log.info(f"{balance}")
 
-        # check deals
-        all_deals = self.engine.get_all_deals()
+            # check position
+            positions = self.engine.get_all_positions(gateway_name=gateway_name )
+            self.engine.log.info(f"{positions}")
 
-        # send orders
-        for security in cur_data:
+            # check orders
+            all_orders = self.engine.get_all_orders(gateway_name=gateway_name )
 
-            orderbook = self.engine.get_orderbook(security)
-            quote = self.engine.get_quote(security)
-            data = cur_data[security]
-            self.engine.log.info(quote)
-            self.engine.log.info(orderbook)
-            self.engine.log.info(data)
+            # check deals
+            all_deals = self.engine.get_all_deals(gateway_name=gateway_name )
 
-            # if isinstance(data, dict): price = data["k1m"].close
-            # elif isinstance(data, Bar): price = data.close
-            # else: raise ValueError(f"data不是合法的格式！")
+            # send orders
+            for security in cur_data[gateway_name]:
 
-            order_instruct = dict(
-                security=security,
-                price=quote.last_price,
-                quantity=security.lot_size,
-                direction=Direction.SHORT,
-                offset=Offset.OPEN,
-                order_type=OrderType.LIMIT
-            )
-            self.engine.log.info(f"提交订单:\n{order_instruct}")
-            orderid = self.engine.send_order(**order_instruct)
-            if orderid=="":
-                self.engine.log.info("提交订单失败")
-                return
+                if security not in self.securities[gateway_name]:
+                    continue
 
-            sleep(self.sleep_time)
-            order = self.engine.get_order(orderid)
-            self.engine.log.info(f"订单{orderid}已发出:{order}")
+                bar = cur_data[gateway_name][security]
+                orderbook = self.engine.get_orderbook(security=security, gateway_name=gateway_name )
+                quote = self.engine.get_quote(security=security, gateway_name=gateway_name )
+                data = cur_data[gateway_name][security]
+                self.engine.log.info(quote)
+                self.engine.log.info(orderbook)
+                self.engine.log.info(data)
 
-            deals = self.engine.find_deals_with_orderid(orderid)
-            for deal in deals:
-                self.portfolio.update(deal)
+                # if isinstance(data, dict): price = data["k1m"].close
+                # elif isinstance(data, Bar): price = data.close
+                # else: raise ValueError(f"data不是合法的格式！")
 
-            if orderid:
-                self.engine.cancel_order(orderid)
-                self.engine.log.info(f"取消订单{order}")
+                order_instruct = dict(
+                    security=security,
+                    price=bar.close if quote is None else quote.last_price,
+                    quantity=security.lot_size,
+                    direction=Direction.SHORT,
+                    offset=Offset.OPEN,
+                    order_type=OrderType.LIMIT,
+                    gateway_name=gateway_name ,
+                )
+                self.engine.log.info(f"提交订单:\n{order_instruct}")
+                orderid = self.engine.send_order(**order_instruct)
+                if orderid=="":
+                    self.engine.log.info("提交订单失败")
+                    return
+
+                sleep(self.sleep_time)
+                order = self.engine.get_order(orderid=orderid, gateway_name=gateway_name)
+                self.engine.log.info(f"订单{orderid}已发出:{order}")
+
+                deals = self.engine.find_deals_with_orderid(orderid, gateway_name=gateway_name)
+                for deal in deals:
+                    self.portfolios[gateway_name].update(deal)
+
+                if orderid:
+                    self.engine.cancel_order(orderid=orderid, gateway_name=gateway_name)
+                    self.engine.log.info(f"取消订单{order}")
 

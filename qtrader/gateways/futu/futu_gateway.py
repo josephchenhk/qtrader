@@ -506,7 +506,7 @@ class FutuGateway(BaseGateway):
         for idx, row in data.iterrows():
             security = self.get_stock(code=row["code"])
             if security is None:
-                security = Stock(code=row["code"], stock_name=row["stock_name"])
+                security = Stock(code=row["code"], security_name=row["stock_name"])
             position_data = PositionData(
                 security=security,
                 direction = Direction.LONG if row["position_side"] == "LONG" else Direction.SHORT,

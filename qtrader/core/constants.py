@@ -61,6 +61,8 @@ class Exchange(Enum):
     HKFE = "HKFE"           # Hong Kong Futures Exchange
     SSE = "SSE"             # Shanghai Stock Exchange
     SZSE = "SZSE"           # Shenzhen Stock Exchange
+    COMEX = "COMEX"         # New York Mercantile Exchange
+    SGE = "SGE"             # Shanghai Gold Exchange
 
 
 class Currency(Enum):

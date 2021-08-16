@@ -93,8 +93,8 @@ class Engine:
 
     def get_balance_id(self, gateway_name:str):
         """获取数据库里面的balance id"""
-        broker_name = self.gateways[gateway_name]["broker_name"]
-        broker_account = self.gateways[gateway_name]["broker_account"]
+        broker_name = self.gateways[gateway_name].broker_name
+        broker_account = self.gateways[gateway_name].broker_account
         broker_environment = self.gateways[gateway_name].trade_mode.name
         balance_df = self.db.select_records(
             table_name="balance",
@@ -125,7 +125,7 @@ class Engine:
         assert order_df.shape[0]==1, f"There are more than one rows in order: balance_id={balance_id} broker_order_id=" \
                                      f"{broker_order_id}"
         order = Order(
-            security=Stock(stock_name=order_df["security_name"].values[0], code=order_df["security_code"].values[0]),
+            security=Stock(security_name=order_df["security_name"].values[0], code=order_df["security_code"].values[0]),
             price=order_df["price"].values[0],
             quantity=order_df["quantity"].values[0],
             direction=convert_direction_db2qt(order_df["direction"].values[0]),
@@ -152,7 +152,7 @@ class Engine:
         assert deal_df.shape[0]==1, f"There are more than one rows in order: balance_id={balance_id} broker_order_id=" \
                                     f"{broker_order_id}"
         deal = Deal(
-            security=Stock(stock_name=deal_df["security_name"].values[0], code=deal_df["security_code"].values[0]),
+            security=Stock(security_name=deal_df["security_name"].values[0], code=deal_df["security_code"].values[0]),
             direction=convert_direction_db2qt(deal_df["direction"].values[0]),
             offset=convert_offset_db2qt(deal_df["offset"].values[0]),
             order_type=convert_order_type_db2qt(deal_df["order_type"].values[0]),
@@ -166,8 +166,8 @@ class Engine:
 
     def get_db_balance(self, strategy_account:str, strategy_version:str, gateway_name:str)->AccountBalance:
         """从数据库加载balance（如果数据库无记录，返回None）"""
-        broker_name = self.gateways[gateway_name]["broker_name"]
-        broker_account = self.gateways[gateway_name]["broker_account"]
+        broker_name = self.gateways[gateway_name].broker_name
+        broker_account = self.gateways[gateway_name].broker_account
         broker_environment = self.gateways[gateway_name].trade_mode.name
         balance_df = self.db.select_records(
             table_name="balance",
@@ -198,7 +198,7 @@ class Engine:
             return None
         position = Position()
         for _, row in position_df.iterrows():
-            security = Stock(code=row["security_code"], stock_name=row["security_name"])
+            security = Stock(code=row["security_code"], security_name=row["security_name"])
             direction = convert_direction_db2qt(row["direction"])
             position_data = PositionData(
                 security=security,
@@ -213,8 +213,8 @@ class Engine:
 
     def sync_broker_balance(self, gateway_name:str):
         """同步券商资金"""
-        broker_name = self.gateways[gateway_name]["broker_name"]
-        broker_account = self.gateways[gateway_name]["broker_account"]
+        broker_name = self.gateways[gateway_name].broker_name
+        broker_account = self.gateways[gateway_name].broker_account
         broker_environment = self.gateways[gateway_name].trade_mode.name
         broker_balance = self.get_broker_balance(gateway_name)
         if broker_balance is None: return
@@ -300,13 +300,13 @@ class Engine:
         self.portfolios[gateway_name].account_balance = self.get_db_balance(
             strategy_account=self.strategy_account,
             strategy_version=self.strategy_version,
-            market_name=gateway_name,
+            gateway_name=gateway_name,
         )
 
     def sync_broker_position(self, gateway_name:str):
         """同步券商持仓"""
-        broker_name = self.gateways[gateway_name]["broker_name"]
-        broker_account = self.gateways[gateway_name]["broker_account"]
+        broker_name = self.gateways[gateway_name].broker_name
+        broker_account = self.gateways[gateway_name].broker_account
         broker_environment = self.gateways[gateway_name].trade_mode.name
         all_broker_positions = self.get_all_broker_positions(gateway_name)
         if all_broker_positions is None: return
@@ -354,7 +354,7 @@ class Engine:
                 self.db.insert_records(
                     table_name="position",
                     balance_id=default_balance_id,
-                    security_name=broker_position.security.stock_name,
+                    security_name=broker_position.security.security_name,
                     security_code=broker_position.security.code,
                     direction=broker_position.direction.name,
                     holding_price=broker_position.holding_price,
@@ -370,7 +370,7 @@ class Engine:
             nondefault_position_df = position_df[position_df["balance_id"]!=default_balance_id]
             strat_positions = []
             for _, row in nondefault_position_df.iterrows():
-                security = Stock(code=row["security_code"], stock_name=row["security_name"])
+                security = Stock(code=row["security_code"], security_name=row["security_name"])
                 direction = convert_direction_db2qt(row["direction"])
                 db_pos = PositionData(
                     security=security, # TODO: lot_size is not available
@@ -413,7 +413,7 @@ class Engine:
                     self.db.insert_records(
                         table_name="position",
                         balance_id=default_balance_id,
-                        security_name=broker_position.security.stock_name,
+                        security_name=broker_position.security.security_name,
                         security_code=broker_position.security.code,
                         direction=broker_position.direction.name,
                         holding_price=broker_position.holding_price,
@@ -686,8 +686,8 @@ def persist_account_balance(engine):
             return
         updates = dict()
         for field in ("cash", "power", "max_power_short", "net_cash_power"):
-            if getattr(engine.portfolio.account_balance, field) != getattr(db_balance, field):
-                updates[field] = getattr(engine.portfolio.account_balance, field)
+            if getattr(engine.portfolios[gateway_name].account_balance, field) != getattr(db_balance, field):
+                updates[field] = getattr(engine.portfolios[gateway_name].account_balance, field)
         if updates:
             engine.db.update_records(
                 table_name="balance",
@@ -701,7 +701,7 @@ def persist_position(engine):
     # 逐个gateway进行持久化
     for gateway_name in engine.gateways_persist:
         engine_position = engine.portfolios[gateway_name].position
-        engine_positions = engine_position.get_all_positions(gateway_name=gateway_name)
+        engine_positions = engine_position.get_all_positions()
         balance_id = engine.get_balance_id(gateway_name=gateway_name)
         db_position = engine.get_db_position(balance_id=balance_id)
         if db_position is None:
@@ -709,7 +709,7 @@ def persist_position(engine):
                 engine.db.insert_records(
                     table_name="position",
                     balance_id=balance_id,
-                    security_name=position_data.security.stock_name,
+                    security_name=position_data.security.security_name,
                     security_code=position_data.security.code,
                     direction=position_data.direction.name,
                     holding_price=position_data.holding_price,
@@ -727,7 +727,7 @@ def persist_position(engine):
                     engine.db.delete_records(
                         table_name="position",
                         balance_id=balance_id,
-                        security_name=db_position_data.security.stock_name,
+                        security_name=db_position_data.security.security_name,
                         security_code=db_position_data.security.code,
                         direction=db_position_data.direction.name,
                     )
@@ -741,7 +741,7 @@ def persist_position(engine):
                     engine.db.insert_records(
                         table_name="position",
                         balance_id=balance_id,
-                        security_name=position_data.security.stock_name,
+                        security_name=position_data.security.security_name,
                         security_code=position_data.security.code,
                         direction=position_data.direction.name,
                         holding_price=position_data.holding_price,
@@ -757,7 +757,7 @@ def persist_position(engine):
                             update_time=position_data.update_time
                         ),
                         balance_id=balance_id,
-                        security_name=position_data.security.stock_name,
+                        security_name=position_data.security.security_name,
                         security_code=position_data.security.code,
                         direction=position_data.direction.name,
                     )
@@ -776,7 +776,7 @@ def persist_order(engine):
                     table_name="trading_order",
                     broker_order_id=order.orderid,
                     balance_id=balance_id,
-                    security_name=order.security.stock_name,
+                    security_name=order.security.security_name,
                     security_code=order.security.code,
                     price=order.price,
                     quantity=order.quantity,
@@ -832,7 +832,7 @@ def persist_deal(engine):
                     broker_order_id=deal.orderid,
                     order_id=order_id,
                     balance_id=balance_id,
-                    security_name=deal.security.stock_name,
+                    security_name=deal.security.security_name,
                     security_code=deal.security.code,
                     direction=deal.direction.name,
                     offset=deal.offset.name,

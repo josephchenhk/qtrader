@@ -86,7 +86,7 @@ Now we are ready to run a backtest. Here is a sample of running a backtest in QT
 
 ```python
 # prepare stocks
-stock = Stock(code="HK.01157", lot_size=200, stock_name="中联重科")
+stock = Stock(code="HK.01157", lot_size=200, security_name="中联重科")
 stock_list = [stock]
 
 market = BacktestGateway(
