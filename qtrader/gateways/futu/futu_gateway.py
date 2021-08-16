@@ -29,7 +29,7 @@ from qtrader.config import GATEWAYS, DATA_PATH
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
 
-FUTU = GATEWAYS["Futu"]
+FUTU = GATEWAYS.get("Futu")
 
 class FutuHKEquityFees(BaseFees):
     """
