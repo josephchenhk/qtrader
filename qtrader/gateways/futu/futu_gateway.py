@@ -72,7 +72,7 @@ class FutuHKEquityFees(BaseFees):
     交易征费（香港证监会）: 0.0027*成交金额，最低0.01港元
     """
 
-    def __init__(self, *trades: Dict):
+    def __init__(self, *trades:Dict):
         # 富途收费
         commissions = 0       # 佣金
         platform_fees = 0     # 平台使用费
