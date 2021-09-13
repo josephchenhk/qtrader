@@ -19,7 +19,14 @@ import uuid
 from typing import Dict, List, Union
 
 from ibapi.client import EClient
+from ibapi.common import OrderId, TickAttrib, TickerId
+from ibapi.contract import Contract, ContractDetails
+from ibapi.execution import Execution
+from ibapi.order import Order
+from ibapi.order_state import OrderState
+from ibapi.ticktype import TickType, TickTypeEnum
 from ibapi.wrapper import EWrapper
+from ibapi.common import BarData as IbBarData
 
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import Direction, TradeMode
@@ -66,7 +73,17 @@ class IbFees(BaseFees):
         self.total_fees = total_fees
 
 
-class IbGateway(BaseGateway):
+class IbWrapper(EWrapper):
+    def __init__(self):
+        super().__init__()
+
+
+class IbClient(EClient):
+    def __init__(self, wrapper):
+        super().__init__(self, wrapper)
+
+
+class IbGateway(BaseGateway, IbWrapper, IbClient):
 
     def __init__(self,
             securities:List[Stock],
@@ -75,7 +92,11 @@ class IbGateway(BaseGateway):
             end:datetime=None,
             fees:BaseFees=FutuHKEquityFees,
         ):
+
         super().__init__(securities, gateway_name)
+
+        IbWrapper.__init__(self)
+        IbClient.__init__(self, wrapper=self)
 
         self.fees = fees
         self.start = start
@@ -89,3 +110,5 @@ class IbGateway(BaseGateway):
 
         self.trd_ctx = OpenHKTradeContext(host=FUTU["host"], port=FUTU["port"])
         self.connect_trade()
+
+
