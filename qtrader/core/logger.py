@@ -17,7 +17,7 @@ logger.setLevel(logging.DEBUG)  # Log等级总开关
 if "log" not in os.listdir():
     os.mkdir(os.path.join(os.getcwd(),"log"))
 logfile = f'./log/{datetime.now().strftime("%Y-%m-%d %H-%M-%S.%f")}.txt'
-fh = logging.FileHandler(logfile, mode='a')
+fh = logging.FileHandler(logfile, mode='a', encoding="utf-8")
 fh.setLevel(logging.DEBUG)  # 输出到file的log等级的开关
 
 # 第三步，再创建一个handler，用于输出到控制台
