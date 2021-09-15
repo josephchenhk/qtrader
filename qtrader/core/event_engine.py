@@ -53,6 +53,7 @@ class BarEventEngineRecorder:
         if path not in os.listdir():
             os.mkdir(path)
         now = datetime.now()
+        now = now.strftime('%Y-%m-%d %H-%M-%S.%f')
         os.mkdir(f"{path}/{now}")
 
         dt = getattr(self, "datetime")
