@@ -4,3 +4,5 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: __init__.py.py
 # @Software: PyCharm
+
+from .ib_gateway import IbGateway
