@@ -72,7 +72,7 @@ class FutuHKEquityFees(BaseFees):
     交易征费（香港证监会）: 0.0027*成交金额，最低0.01港元
     """
 
-    def __init__(self, *trades:Dict):
+    def __init__(self, *deals:Deal):
         # 富途收费
         commissions = 0       # 佣金
         platform_fees = 0     # 平台使用费
@@ -85,9 +85,9 @@ class FutuHKEquityFees(BaseFees):
 
         total_trade_amount = 0
         total_number_of_trades = 0
-        for trade in trades:
-            price = trade.get("price")
-            size = trade.get("size")
+        for deal in deals:
+            price = deal.filled_avg_price
+            size = deal.filled_quantity
             trade_amount = price * size
             total_number_of_trades += 1
             total_trade_amount += trade_amount
