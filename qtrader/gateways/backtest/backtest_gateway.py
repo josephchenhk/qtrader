@@ -31,7 +31,7 @@ class BacktestFees(BaseFees):
     """
     """
 
-    def __init__(self, *trades:Dict):
+    def __init__(self, *deals:Deal):
         # 平台收费
         commissions = 0       # 佣金
         platform_fees = 0     # 平台使用费
@@ -41,6 +41,11 @@ class BacktestFees(BaseFees):
         stamp_fees = 0        # 印花税
         trade_fees = 0        # 交易费
         transaction_fees = 0  # 交易征费
+
+        for deal in deals:
+            price = deal.filled_avg_price
+            quantity = deal.filled_quantity
+            commissions += price*quantity*0.0005 # assume 0.0005 cost in general
 
         # 总费用
         total_fees = commissions + platform_fees + system_fees + settlement_fees + stamp_fees + trade_fees + transaction_fees
