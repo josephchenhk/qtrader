@@ -29,7 +29,8 @@ class Portfolio:
         direction = deal.direction
         offset = deal.offset
         filled_time = deal.updated_time
-        fee = self.market.fees({"price": price, "size": quantity}).total_fees
+        # fee = self.market.fees({"price": price, "size": quantity}).total_fees
+        fee = self.market.fees(deal).total_fees
         # update balance
         self.account_balance.cash -= fee
         if direction==Direction.LONG:
