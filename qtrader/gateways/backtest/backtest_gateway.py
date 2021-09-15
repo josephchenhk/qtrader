@@ -27,6 +27,33 @@ from qtrader.gateways.futu.futu_gateway import FutuHKEquityFees
 
 assert set(DATA_PATH.keys())==set(DATA_MODEL.keys()), "`DATA_PATH` and `DATA_MODEL` keys are not aligned! Please check qtrader.config.config.py"
 
+class BacktestFees(BaseFees):
+    """
+    """
+
+    def __init__(self, *trades:Dict):
+        # 平台收费
+        commissions = 0       # 佣金
+        platform_fees = 0     # 平台使用费
+        # 平台代收费
+        system_fees = 0       # 交易系统使用费
+        settlement_fees = 0   # 交收费
+        stamp_fees = 0        # 印花税
+        trade_fees = 0        # 交易费
+        transaction_fees = 0  # 交易征费
+
+        # 总费用
+        total_fees = commissions + platform_fees + system_fees + settlement_fees + stamp_fees + trade_fees + transaction_fees
+
+        self.commissions = commissions
+        self.platform_fees = platform_fees
+        self.system_fees = system_fees
+        self.settlement_fees = settlement_fees
+        self.stamp_fees = stamp_fees
+        self.trade_fees = trade_fees
+        self.transaction_fees = transaction_fees
+        self.total_fees = total_fees
+
 class BacktestGateway(BaseGateway):
 
     # 定义交易时间 (港股)
@@ -51,7 +78,7 @@ class BacktestGateway(BaseGateway):
             start:datetime,
             end:datetime,
             dtypes:Dict[str, List[str]]=dict(k1m=["time_key", "open", "high", "low", "close", "volume"]),
-            fees:BaseFees=FutuHKEquityFees, # 默认是港股富途收费
+            fees:BaseFees=BacktestFees, # 默认是港股富途收费
         )->Dict[Stock, Iterator]:
         """
         历史数据分派器
