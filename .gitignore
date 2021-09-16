@@ -144,6 +144,9 @@ qtrader/data/
 .DS_Store
 .idea/
 
+# private
+private/*
+
 # log
 log/*
 qtrader/log/*
