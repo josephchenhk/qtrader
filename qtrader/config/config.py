@@ -20,7 +20,7 @@ GATEWAYS = {
 TIME_STEP = 60000  # 设置事件框架监测步长 ms
 
 DATA_PATH = {
-    "k1m": "examples/data/k_line/K_1M", # "k1m" is must have
+    "k1m": "C:/Users/ABC/data/k_line/K_1M", # "k1m" is must have
 }
 
 DATA_MODEL = {
