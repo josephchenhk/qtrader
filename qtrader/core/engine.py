@@ -122,8 +122,8 @@ class Engine:
         )
         if order_df.empty:
             return None
-        assert order_df.shape[0]==1, f"There are more than one rows in order: balance_id={balance_id} broker_order_id=" \
-                                     f"{broker_order_id}"
+        assert order_df.shape[0]==1, (f"There are more than one rows in order: balance_id={balance_id} broker_order_id=" 
+                                     f"{broker_order_id}")
         order = Order(
             security=Stock(security_name=order_df["security_name"].values[0], code=order_df["security_code"].values[0]),
             price=order_df["price"].values[0],
@@ -149,8 +149,8 @@ class Engine:
         )
         if deal_df.empty:
             return None
-        assert deal_df.shape[0]==1, f"There are more than one rows in order: balance_id={balance_id} broker_order_id=" \
-                                    f"{broker_order_id}"
+        assert deal_df.shape[0]==1, (f"There are more than one rows in order: balance_id={balance_id} broker_order_id=" 
+                                    f"{broker_deal_id}")
         deal = Deal(
             security=Stock(security_name=deal_df["security_name"].values[0], code=deal_df["security_code"].values[0]),
             direction=convert_direction_db2qt(deal_df["direction"].values[0]),
@@ -436,13 +436,13 @@ class Engine:
         """发出订单"""
         create_time = self.gateways[gateway_name].market_datetime
         order = Order(
-            security = security,
-            price = price,
-            quantity = quantity,
-            direction = direction,
-            offset = offset,
-            order_type = order_type,
-            create_time = create_time
+            security=security,
+            price=price,
+            quantity=quantity,
+            direction=direction,
+            offset=offset,
+            order_type=order_type,
+            create_time=create_time
         )
         orderid = self.gateways[gateway_name].place_order(order)
         return orderid
@@ -475,7 +475,7 @@ class Engine:
             *,
             gateway_name:str,
             **kwargs,
-        )->Dict[str, List[Any]] or Bar or CapitalDistribution:
+        )->Union[Dict[str, List[Any]], Bar, CapitalDistribution]:
         """
         获取历史时间段的数据
         如传入dfield参数，e.g., dfield="k1m" 或者 dfield="capdist"，则获取相应的bar或capitaldistribution数据
