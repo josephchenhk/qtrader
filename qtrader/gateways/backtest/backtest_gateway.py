@@ -81,8 +81,8 @@ class BacktestGateway(BaseGateway):
             gateway_name:str,
             start:datetime,
             end:datetime,
-            dtypes:Dict[str, List[str]]=dict(k1m=["time_key", "open", "high", "low", "close", "volume"]),
-            fees:BaseFees=BacktestFees, # 默认是港股富途收费
+            dtypes:Dict[str, List[str]]=dict(kline=["time_key", "open", "high", "low", "close", "volume"]),
+            fees:BaseFees=BacktestFees, # 默认收费
         )->Dict[Stock, Iterator]:
         """
         历史数据分派器
@@ -118,8 +118,8 @@ class BacktestGateway(BaseGateway):
                 # 初始化数据缓存
                 prev_cache[security][dfield] = None
                 next_cache[security][dfield] = None
-                # 记录回测交易日(以分钟k线日历为准)
-                if dfield=="k1m":
+                # 记录回测交易日(以1分钟k线日历为准)
+                if dfield=="kline":
                     trading_days[security] = sorted(set(t.split(" ")[0] for t in data["time_key"].values))
         self.data_iterators = data_iterators
         self.prev_cache = prev_cache
