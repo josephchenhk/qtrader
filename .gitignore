@@ -171,3 +171,12 @@ examples/data/clickhouse/*
 
 # plugins
 qtrader/plugins/clickhouse/*
+
+# engines
+qtrader/core/engine.c
+qtrader/core/engine.py
+qtrader/core/engine.pyx
+qtrader/core/event_engine.c
+qtrader/core/event_engine.py
+qtrader/core/event_engine.pyx
+qtrader/core/setup.py

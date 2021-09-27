@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import List, Dict, Iterator, Union
 from dateutil.relativedelta import relativedelta
 
-from qtrader.config import DATA_PATH, DATA_MODEL
+from qtrader.config import DATA_PATH, DATA_MODEL, TIME_STEP
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction
 from qtrader.core.data import Quote, OrderBook, Bar, CapitalDistribution
@@ -22,7 +22,6 @@ from qtrader.core.security import Stock
 from qtrader.core.utility import Time
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
-from qtrader.gateways.futu.futu_gateway import FutuHKEquityFees
 
 
 assert set(DATA_PATH.keys())==set(DATA_MODEL.keys()), "`DATA_PATH` and `DATA_MODEL` keys are not aligned! Please check qtrader.config.config.py"
@@ -65,8 +64,8 @@ class BacktestGateway(BaseGateway):
     TRADING_HOURS_AM = [Time(9,30,0), Time(12,0,0)]
     TRADING_HOURS_PM = [Time(13,0,0), Time(16,0,0)]
 
-    # 定义最小时间单位 (秒)
-    TIME_STEP = 60
+    # 定义最小时间单位 (毫秒)，从config文件加载 TIME_STEP
+    TIME_STEP = TIME_STEP
 
     # 参数设定
     SHORT_INTEREST_RATE = 0.0098  # 融券利息
@@ -82,8 +81,8 @@ class BacktestGateway(BaseGateway):
             gateway_name:str,
             start:datetime,
             end:datetime,
-            dtypes:Dict[str, List[str]]=dict(k1m=["time_key", "open", "high", "low", "close", "volume"]),
-            fees:BaseFees=BacktestFees, # 默认是港股富途收费
+            dtypes:Dict[str, List[str]]=dict(kline=["time_key", "open", "high", "low", "close", "volume"]),
+            fees:BaseFees=BacktestFees, # 默认收费
         )->Dict[Stock, Iterator]:
         """
         历史数据分派器
@@ -119,8 +118,8 @@ class BacktestGateway(BaseGateway):
                 # 初始化数据缓存
                 prev_cache[security][dfield] = None
                 next_cache[security][dfield] = None
-                # 记录回测交易日(以分钟k线日历为准)
-                if dfield=="k1m":
+                # 记录回测交易日(以1分钟k线日历为准)
+                if dfield=="kline":
                     trading_days[security] = sorted(set(t.split(" ")[0] for t in data["time_key"].values))
         self.data_iterators = data_iterators
         self.prev_cache = prev_cache
@@ -161,7 +160,7 @@ class BacktestGateway(BaseGateway):
         :return:
         """
         # 移动一个时间单位，看是否属于交易时间
-        next_datetime = cur_datetime + relativedelta(seconds=self.TIME_STEP)
+        next_datetime = cur_datetime + relativedelta(seconds=self.TIME_STEP/1000.0)
         next_time = Time(hour=next_datetime.hour, minute=next_datetime.minute, second=next_datetime.second)
         next_trading_daytime = None
 
