@@ -63,9 +63,10 @@ class Exchange(Enum):
     SZSE = "SZSE"           # Shenzhen Stock Exchange
     COMEX = "COMEX"         # New York Mercantile Exchange
     SGE = "SGE"             # Shanghai Gold Exchange
+    IDEALPRO = "IDEALPRO"   # currency
 
 
-class Currency(Enum):
+class Cash(Enum):
     """
     Currency
     """
