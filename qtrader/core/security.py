@@ -5,7 +5,7 @@
 # @FileName: security.py
 # @Software: PyCharm
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from qtrader.core.constants import Exchange
 
@@ -25,19 +25,36 @@ class Security:
         return (self.code==other.code) and (self.security_name==other.security_name)
 
     def __hash__(self):
-        return hash(f"{self.security_name}|{self.code}")
+        return hash(f"{self.security_name}|{self.code}|{self.exchange.value}")
 
 
+@dataclass(frozen=True)
 class Stock(Security):
     """
     股票的基本属性
     """
-    stock_name:str
+
+    code:str
+    security_name:str
+    lot_size:int = 1                   # 默认1手
+    exchange:Exchange = Exchange.SEHK  # 默认香港股票
 
     def __post_init__(self):
-        self.stock_name = self.security_name
-        if self.lot_size is None: self.lot_size = 1 # 默认1手
-        if self.exchange is None: self.exchange = Exchange.SEHK # 默认香港股票
+        pass
 
+
+@dataclass(frozen=True)
+class Currency(Security):
+    """
+    外汇的基本属性
+    """
+
+    code:str
+    security_name:str
+    lot_size:int = 1000                    # 默认1000
+    exchange:Exchange = Exchange.IDEALPRO  # 默认IDEALPRO
+
+    def __post_init__(self):
+        pass
 
 
