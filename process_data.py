@@ -48,6 +48,7 @@ def get_volume(bars:List[pd.Series]):
     return volume
 
 def validate_bar_interval(bars:List[pd.Series], bar_interval:int):
+    """Validate the aggregated bar interval is as expected"""
     time_key1 = datetime.strptime(bars[0]["time_key"], "%Y-%m-%d %H:%M:%S")
     time_key2 = datetime.strptime(bars[-1]["time_key"], "%Y-%m-%d %H:%M:%S")
     time_key_diff = (time_key2 - time_key1).total_seconds() / 60.0
@@ -59,15 +60,33 @@ def create_folder_if_not_exists(path:Path):
 path = Path(DATA_PATH.get("k1m"))
 
 ticker = "GC"
-bar_interval = 3
+bar_interval = 4
+
+start = datetime(2021, 9, 14)
+end = datetime(2021, 9, 24)
 
 data_files = os.listdir(path.joinpath(ticker))
 data_files = sorted(data_files)
+data_files = [d for d in data_files if start<=datetime.strptime(d.split(".")[0], "%Y-%m-%d")<=end]
 bar_folder_name = f"K_{int(bar_interval)}M"
 save_path = path.parent.joinpath(bar_folder_name).joinpath(ticker)
 create_folder_if_not_exists(save_path)
 
+# Some 1 min bars on previous day before `start` has not been aggregated, we will use those bars as well
+existing_agg_data_files = os.listdir(path.parent.joinpath(f"K_{bar_interval}M/GC"))
+if existing_agg_data_files:
+    existing_agg_data_files = sorted(existing_agg_data_files)
+    existing_agg_data = pd.read_csv(path.parent.joinpath(f"K_{bar_interval}M/GC/{existing_agg_data_files[-1]}"))
+    existing_1m_data = pd.read_csv(path.parent.joinpath(f"K_1M/GC/{existing_agg_data_files[-1]}"))
+    data_not_aggregated = existing_1m_data[existing_1m_data["time_key"]>existing_agg_data.iloc[-1]["time_key"]]
+else:
+    data_not_aggregated = pd.DataFrame()
+
 bars = []
+for idx, row in data_not_aggregated.iterrows():
+    bars.append(row)
+
+
 new_bars = []
 for data_file in data_files:
     df = pd.read_csv(f"{DATA_PATH.get('k1m')}/{ticker}/{data_file}")
