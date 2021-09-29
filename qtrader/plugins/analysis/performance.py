@@ -24,7 +24,7 @@ def holding_period(time_:pd.Series):
     end_dt = datetime.strptime(time_["close_datetime"], "%Y-%m-%d %H:%M:%S")
     return (end_dt - begin_dt).total_seconds() / 60.
 
-result_path = "results/2021-09-24 10-49-10.569006-3min/result.csv"
+result_path = "results/2021-09-24 10-49-10.569006-4min/result.csv"
 result = Path(os.getcwd()).parent.parent.parent.joinpath(result_path)
 df = pd.read_csv(result)
 df_action = df[df["action"].notna()]
@@ -49,7 +49,7 @@ for idx in range(df_action.shape[0]):
     # pnl = close_trade["pv_without_fees"] - open_trade["pv_without_fees"]
 
     # Keep the impact of fees
-    pnl = close_trade["portfolio_value"] - open_trade["portfolio_value"]
+    pnl = close_trade["portfolio_value"] - open_trade["portfolio_value"] - 1.92
 
     if pnl>1e-8:
         win_trades.append([
