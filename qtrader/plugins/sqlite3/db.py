@@ -126,9 +126,13 @@ class DB:
             "strategy_version_desc VARCHAR(300), "
             "strategy_status VARCHAR(15), "
             "cash DOUBLE NOT NULL, " +
-            "power DOUBLE NOT NULL, " +
+            "cash_by_currency VARCHAR(50), "
+            "available_cash DOUBLE NOT NULL, " +
             "max_power_short DOUBLE, " +
             "net_cash_power DOUBLE, " +
+            "maintenance_margin DOUBLE, " +
+            "unrealized_pnl DOUBLE, " +
+            "realized_pnl DOUBLE, " +
             "update_time DATETIME NOT NULL, "
             "remark VARCHAR(300))"
         )
