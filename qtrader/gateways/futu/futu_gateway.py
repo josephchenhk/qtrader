@@ -428,7 +428,7 @@ class FutuGateway(BaseGateway):
             dfields = DATA_PATH
         data = dict()
         for dfield in dfields:
-            if dfield=="k1m":
+            if dfield=="kline":
                 data[dfield] = self.get_recent_bar(security)
             elif dfield=="capdist":
                 data[dfield] = self.get_recent_capital_distribution(security)
@@ -481,7 +481,9 @@ class FutuGateway(BaseGateway):
             return
         balance = AccountBalance()
         balance.cash = data["cash"].values[0]
-        balance.power = data["power"].values[0]
+        balance.available_cash = data["cash"].values[0] - data["frozen_cash"].values[0]
+        balance.maintenance_margin = data["maintenance_margin"].values[0]
+        balance.unrealized_pnl = data["unrealized_pl"].values[0]
         balance.max_power_short = data["max_power_short"].values[0]
         balance.net_cash_power = data["net_cash_power"].values[0]
         if not isinstance(balance.max_power_short, float): balance.max_power_short = -1
