@@ -141,6 +141,8 @@ class Quote:
     amplitude: float = 0
     suspension: bool = False
     price_spread: float = 0
+    bid_price: float = 0
+    ask_price: float = 0
     sec_status: str = "NORMAL"
 
 
