@@ -64,6 +64,9 @@ class Exchange(Enum):
     COMEX = "COMEX"         # New York Mercantile Exchange
     SGE = "SGE"             # Shanghai Gold Exchange
     IDEALPRO = "IDEALPRO"   # currency
+    GLOBEX = "GLOBEX"       # futures
+    NYMEX = "NYMEX"         # COMEX (gold) futures
+    SMART = "SMART"
 
 
 class Cash(Enum):
