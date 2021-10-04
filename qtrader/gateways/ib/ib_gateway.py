@@ -20,24 +20,25 @@ import time
 import queue
 from dataclasses import replace
 from datetime import datetime
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any
 from threading import Thread, Event
 
 import pandas as pd
 from ibapi.account_summary_tags import AccountSummaryTags
 
 from ibapi.client import EClient
+from ibapi.commission_report import CommissionReport
 from ibapi.common import OrderId, TickAttrib, TickerId, MarketDataTypeEnum
 from ibapi.contract import Contract, ContractDetails
 from ibapi.execution import Execution
-from ibapi.order import Order
+from ibapi.order import Order as IbOrder
 from ibapi.order_state import OrderState
 from ibapi.ticktype import TickType, TickTypeEnum
 from ibapi.wrapper import EWrapper
 from ibapi.common import BarData as IbBarData
 
 from qtrader.core.balance import AccountBalance
-from qtrader.core.constants import Direction, TradeMode, Exchange
+from qtrader.core.constants import Direction, TradeMode, Exchange, OrderType
 from qtrader.core.constants import OrderStatus as QTOrderStatus
 from qtrader.core.deal import Deal
 from qtrader.core.order import Order
@@ -56,7 +57,7 @@ class IbFees(BaseFees):
 
     """
 
-    def __init__(self, *trades:Dict):
+    def __init__(self, *deals:Deal):
         # IB收费
         commissions = 0       # 佣金
         platform_fees = 0     # 平台使用费
@@ -95,6 +96,7 @@ class IbAPI(IbWrapper, IbClient):
         IbClient.__init__(self, wrapper=self)
         self.gateway = gateway
         self.reqId = 0
+        self.nextValidIdQueue = queue.Queue(maxsize=1)
         self.connect(IB["host"], IB["port"], IB["clientid"])
         # EReader Thread
         self.thread = Thread(target=self.run)
@@ -104,32 +106,31 @@ class IbAPI(IbWrapper, IbClient):
         self.disconnect()
 
     def contractDetails(self, reqId:int, contractDetails:ContractDetails):
-        super().contractDetails(reqId, contractDetails)
-        # print(contractDetails)
+        # super().contractDetails(reqId, contractDetails)
         contract = contractDetails.contract
         # Attached contracts to IB gateway
         for security in self.gateway.securities:
-            if self.gateway.ib_contracts[security] is not None:
+            if self.gateway.ib_contractdetails[security] is not None:
                 continue
             if (get_ib_symbol(security)==contract.symbol and
                 get_ib_security_type(security)==contract.secType and
                 get_ib_exchange(security)==contract.exchange and
                 get_ib_currency(security)==contract.currency
             ):
-                self.gateway.ib_contracts[security] = contract
+                self.gateway.ib_contractdetails[security] = contractDetails
                 break
 
     def contractDetailsEnd(self, reqId: int):
-        super().contractDetailsEnd(reqId)
-        print("ContractDetailsEnd. ReqId:", reqId)
-        security = self.gateway.get_security_from_ib_contracts_reqid(reqId)
-        # Notify threads that are waiting for ib_contracts_done
-        self.gateway.ib_contracts_done[security].put(reqId)
+        # super().contractDetailsEnd(reqId)
+        # print("ContractDetailsEnd. ReqId:", reqId)
+        security = self.gateway.get_security_from_ib_contractdetails_reqid(reqId)
+        # Notify threads that are waiting for ib_contractdetails_done
+        self.gateway.ib_contractdetails_done[security].put(reqId)
 
     def realtimeBar(self, reqId: TickerId, time:int, open_: float, high: float, low: float, close: float,
             volume: int, wap: float, count: int
         ):
-        super().realtimeBar(reqId, time, open_, high, low, close, volume, wap, count)
+        # super().realtimeBar(reqId, time, open_, high, low, close, volume, wap, count)
         # print("RealTimeBar. TickerId:", reqId, RealTimeBar(time, -1, open_, high, low, close, volume, wap, count))
         security = self.gateway.get_security_from_ib_5s_bars_reqid(reqId)
         bar_time = datetime.fromtimestamp(time)
@@ -161,7 +162,7 @@ class IbAPI(IbWrapper, IbClient):
             self.gateway.ib_consolidated_bars_done[security].get()
 
     def tickPrice(self, reqId:TickerId, tickType:TickType, price:float, attrib:TickAttrib):
-        super().tickPrice(reqId, tickType, price, attrib)
+        # super().tickPrice(reqId, tickType, price, attrib)
         # print("TickPrice. TickerId:", reqId, "tickType:", tickType,
         #     "Price:", price, "CanAutoExecute:", attrib.canAutoExecute,
         #     "PastLimit:", attrib.pastLimit, end = ' '
@@ -211,8 +212,9 @@ class IbAPI(IbWrapper, IbClient):
             self.gateway.process_orderbook(orderbook)
 
     def tickSize(self, reqId: TickerId, tickType: TickType, size: int):
-        super().tickSize(reqId, tickType, size)
+        # super().tickSize(reqId, tickType, size)
         # print("TickSize. TickerId:", reqId, "TickType:", tickType, "Size:", size)
+
         # process orderbook
         security = self.gateway.get_security_from_ib_quotes_reqid(reqId)
         if self.gateway.ib_orderbooks[security] is None:
@@ -237,19 +239,22 @@ class IbAPI(IbWrapper, IbClient):
             self.gateway.process_orderbook(orderbook)
 
     def tickString(self, reqId: TickerId, tickType: TickType, value: str):
-        super().tickString(reqId, tickType, value)
+        # super().tickString(reqId, tickType, value)
         # print("TickString. TickerId:", reqId, "Type:", tickType, "Value:", value)
+        pass
 
     def tickGeneric(self, reqId: TickerId, tickType: TickType, value: float):
-        super().tickGeneric(reqId, tickType, value)
+        # super().tickGeneric(reqId, tickType, value)
         # print("TickGeneric. TickerId:", reqId, "TickType:", tickType, "Value:", value)
+        pass
 
     def managedAccounts(self, accountsList: str):
-        super().managedAccounts(accountsList)
+        # super().managedAccounts(accountsList)
         # print("Account list:", accountsList)
+        pass
 
     def updateAccountValue(self, key: str, val: str, currency: str, accountName: str):
-        super().updateAccountValue(key, val, currency, accountName)
+        # super().updateAccountValue(key, val, currency, accountName)
         # print("UpdateAccountValue. Key:", key, "Value:", val, "Currency:", currency, "AccountName:", accountName)
         if accountName!=IB["broker_account"]:
             return
@@ -272,13 +277,14 @@ class IbAPI(IbWrapper, IbClient):
     def updatePortfolio(self, contract: Contract, position: float, marketPrice: float, marketValue: float,
             averageCost: float, unrealizedPNL: float, realizedPNL: float, accountName: str
         ):
-        super().updatePortfolio(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName)
-        print("UpdatePortfolio.", "Symbol:", contract.symbol, "SecType:", contract.secType,
-              "Exchange:", contract.exchange, "Position:", position, "MarketPrice:", marketPrice,
-              "MarketValue:", marketValue, "AverageCost:", averageCost,
-              "UnrealizedPNL:", unrealizedPNL, "RealizedPNL:", realizedPNL,
-              "AccountName:", accountName
-        )
+        # super().updatePortfolio(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName)
+        # print("UpdatePortfolio.", "Symbol:", contract.symbol, "SecType:", contract.secType,
+        #       "Exchange:", contract.exchange, "Position:", position, "MarketPrice:", marketPrice,
+        #       "MarketValue:", marketValue, "AverageCost:", averageCost,
+        #       "UnrealizedPNL:", unrealizedPNL, "RealizedPNL:", realizedPNL,
+        #       "AccountName:", accountName
+        # )
+
         # Only update those securities listed in gateway initialization
         security = self.gateway.get_security_from_ib_contract(contract)
         if security is None:
@@ -295,12 +301,14 @@ class IbAPI(IbWrapper, IbClient):
 
 
     def updateAccountTime(self, timeStamp: str):
-        super().updateAccountTime(timeStamp)
-        print("UpdateAccountTime. Time:", timeStamp)
+        # super().updateAccountTime(timeStamp)
+        # print("UpdateAccountTime. Time:", timeStamp)
+        pass
 
     def accountDownloadEnd(self, accountName: str):
-        super().accountDownloadEnd(accountName)
-        print("AccountDownloadEnd. Account:", accountName)
+        # super().accountDownloadEnd(accountName)
+        # print("AccountDownloadEnd. Account:", accountName)
+
         # Update finished, insert into blocking dict
         if hasattr(self.gateway, "balance"):
             self.gateway.ib_accounts.put(IB["broker_account"], self.gateway.balance)
@@ -308,27 +316,96 @@ class IbAPI(IbWrapper, IbClient):
             self.gateway.ib_positions.put(IB["broker_account"], self.gateway.positions)
 
     def accountSummary(self, reqId: int, account: str, tag: str, value: str, currency: str):
-        """
-        AccountSummary. ReqId: 4 Account: DU4267228 Tag:  AccountType Value: INDIVIDUAL Currency:
-        :param reqId:
-        :param account:
-        :param tag:
-        :param value:
-        :param currency:
-        :return:
-        """
-        super().accountSummary(reqId, account, tag, value, currency)
-        print("AccountSummary. ReqId:", reqId, "Account:", account, "Tag: ", tag, "Value:", value, "Currency:", currency)
+        # super().accountSummary(reqId, account, tag, value, currency)
+        # print("AccountSummary. ReqId:", reqId, "Account:", account, "Tag: ", tag, "Value:", value, "Currency:", currency)
+        pass
 
     def accountSummaryEnd(self, reqId: int):
-        super().accountSummaryEnd(reqId)
-        print("AccountSummaryEnd. ReqId:", reqId)
+        # super().accountSummaryEnd(reqId)
+        # print("AccountSummaryEnd. ReqId:", reqId)
+        pass
 
     def error(self, reqId: TickerId, errorCode: int, errorString: str):
-        super().error(reqId, errorCode, errorString)
-        print("Error. Id:", reqId, "Code:", errorCode, "Msg:", errorString)
-        if errorCode==502:
+        """Ref: https://interactivebrokers.github.io/tws-api/message_codes.html#system_codes"""
+        # super().error(reqId, errorCode, errorString)
+        # print("Error. Id:", reqId, "Code:", errorCode, "Msg:", errorString)
+
+        if errorCode in (502, 110):
             raise ConnectionError(f"ErrorCode:{errorCode} ErrorMsg:{errorString}")
+
+    def nextValidId(self, orderId: int):
+        # super().nextValidId(orderId)
+        # print("setting nextValidOrderId: %d", orderId)
+        # self.nextValidOrderId = orderId
+        # print("NextValidId:", orderId)
+        self.nextValidIdQueue.put(orderId)
+
+    def openOrder(self, orderId: OrderId, contract: Contract, order: IbOrder, orderState: OrderState):
+        # super().openOrder(orderId, contract, order, orderState)
+        # print("OpenOrder. PermId: ", order.permId, "ClientId:", order.clientId, " OrderId:", orderId,
+        #     "Account:", order.account, "Symbol:", contract.symbol, "SecType:", contract.secType,
+        #     "Exchange:", contract.exchange, "Action:", order.action, "OrderType:", order.orderType,
+        #     "TotalQty:", order.totalQuantity, "CashQty:", order.cashQty,
+        #     "LmtPrice:", order.lmtPrice, "AuxPrice:", order.auxPrice, "Status:", orderState.status
+        # )
+
+        # get external order id
+        self.gateway.ib_orderids.put(order.orderId, order.permId)
+
+    def orderStatus(self, orderId: OrderId, status: str, filled: float,
+            remaining: float, avgFillPrice: float, permId: int,
+            parentId: int, lastFillPrice: float, clientId: int,
+            whyHeld: str, mktCapPrice: float
+        ):
+        # super().orderStatus(
+        #     orderId, status, filled, remaining,
+        #     avgFillPrice, permId, parentId,
+        #     lastFillPrice, clientId, whyHeld, mktCapPrice
+        # )
+        # print("OrderStatus. Id:", orderId, "Status:", status, "Filled:", filled,
+        #     "Remaining:", remaining, "AvgFillPrice:", avgFillPrice,
+        #     "PermId:", permId, "ParentId:", parentId, "LastFillPrice:",
+        #     lastFillPrice, "ClientId:", clientId, "WhyHeld:",
+        #     whyHeld, "MktCapPrice:", mktCapPrice
+        # )
+
+        order_status = dict(
+            orderId=orderId,
+            status=status,
+            filled=filled,
+            remaining=remaining,
+            avgFillPrice=avgFillPrice,
+            permId=permId,
+            parentId=parentId,
+            lastFillPrice=lastFillPrice,
+            clientId=clientId,
+            whyHeld=whyHeld,
+            mktCapPrice=mktCapPrice
+        )
+        self.gateway.process_order(order_status)
+
+    def execDetails(self, reqId: int, contract: Contract, execution: Execution):
+        # super().execDetails(reqId, contract, execution)
+        # print("ExecDetails. ReqId:", reqId, "Symbol:", contract.symbol, "SecType:", contract.secType,
+        #       "Currency:", contract.currency, execution
+        # )
+
+        # get external deal id
+        self.gateway.ib_dealids.put(execution.orderId, execution.execId)
+
+        deal_status = dict(
+            reqId=reqId,
+            contract=contract,
+            execution=execution
+        )
+        self.gateway.process_deal(deal_status)
+
+
+    def commissionReport(self, commissionReport: CommissionReport):
+        # super().commissionReport(commissionReport)
+        # print("CommissionReport.", commissionReport)
+        self.gateway.ib_commissions.put(commissionReport.execId, commissionReport.commission)
+
 
 class IbGateway(BaseGateway):
 
@@ -359,9 +436,9 @@ class IbGateway(BaseGateway):
         self.end = end
         self.trade_mode = None
 
-        self.ib_contracts_done = {s:queue.Queue(maxsize=1) for s in securities}
-        self.ib_contracts = {s:None for s in securities}               # key:Security, value:IB.Contract
-        self.ib_contracts_reqid = {s: None for s in securities}        # key:Security, value:int (reqId)
+        self.ib_contractdetails_done = {s:queue.Queue(maxsize=1) for s in securities}
+        self.ib_contractdetails = {s:None for s in securities}               # key:Security, value:IB.Contract
+        self.ib_contractdetails_reqid = {s: None for s in securities}        # key:Security, value:int (reqId)
 
         self.ib_consolidated_bars_done = {s:queue.Queue(maxsize=1) for s in securities}
         self.ib_5s_bars = {s:list() for s in securities}               # key:Security, value:List[Bar] (store up to 12, i.e., 1 min bar)
@@ -378,6 +455,11 @@ class IbGateway(BaseGateway):
 
         self.ib_accounts = BlockingDict()
         self.ib_positions = BlockingDict()
+
+        self.ib_orderids = BlockingDict()  # key:reqId, value:IbOrder.permId
+        self.ib_dealids = BlockingDict()   # key:reqId, value:Execution.execId
+
+        self.ib_commissions = BlockingDict() # Key:Execution.execId, value:float
 
         self.api = IbAPI(self)
         self.connect_quote()
@@ -409,45 +491,53 @@ class IbGateway(BaseGateway):
         security = orderbook.security
         self.orderbook.put(security, orderbook)
 
-    def process_order(self, content: pd.DataFrame):
-        """更新订单的状态"""
-        orderid = content["order_id"].values[0]
+    def process_order(self, content: Dict[str, Any]):
+        """更新订单的状态
+        content = order_status = dict(
+            orderId=orderId,
+            status=status,
+            filled=filled,
+            remaining=remaining,
+            avgFillPrice=avgFillPrice,
+            permId=permId,
+            parentId=parentId,
+            lastFillPrice=lastFillPrice,
+            clientId=clientId,
+            whyHeld=whyHeld,
+            mktCapPrice=mktCapPrice
+        )
+        """
+        print("process_order ", content.get("status"))
+        orderid = content.get("permId")
         order = self.orders.get(orderid)  # blocking
-        order.updated_time = try_parsing_datetime(content["updated_time"].values[0])
-        order.filled_avg_price = content["dealt_avg_price"].values[0]
-        order.filled_quantity = content["dealt_qty"].values[0]
-        order.status = convert_orderstatus_futu2qt(content["order_status"].values[0])
-        # 富途的仿真环境不推送deal，需要在这里进行模拟处理
-        if self.trade_mode == TradeMode.SIMULATE and order.status in (
-        QTOrderStatus.FILLED, QTOrderStatus.PART_FILLED):
-            dealid = "futu-sim-deal-" + str(uuid.uuid4())
-            deal = Deal(
-                security=order.security,
-                direction=order.direction,
-                offset=order.offset,
-                order_type=order.order_type,
-                updated_time=order.updated_time,
-                filled_avg_price=order.filled_avg_price,
-                filled_quantity=order.filled_quantity,
-                dealid=dealid,
-                orderid=orderid
-            )
-            self.deals.put(dealid, deal)
+        order.updated_time = datetime.now()
+        order.filled_avg_price = content.get("avgFillPrice")
+        order.filled_quantity = content.get("filled")
+        order.status = convert_orderstatus_ib2qt(content.get("status"))
         self.orders.put(orderid, order)
 
-    def process_deal(self, content: pd.DataFrame):
-        """更新成交的信息"""
-        orderid = content["order_id"].values[0]
-        dealid = content["deal_id"].values[0]
+    def process_deal(self, content: Dict[str,Any]):
+        """更新成交的信息
+        content = deal_status = dict(
+            reqId=reqId,
+            contract=contract,
+            execution=execution
+        )
+        """
+        execution = content.get("execution")
+        order_reqId = execution.orderId
+        dealid = execution.execId
+        assert self.ib_dealids.get(order_reqId)==execution.execId, "execId does not match in self.ib_dealids!"
+        orderid = self.ib_orderids.get(order_reqId)
         order = self.orders.get(orderid)  # blocking
         deal = Deal(
             security=order.security,
             direction=order.direction,
             offset=order.offset,
             order_type=order.order_type,
-            updated_time=try_parsing_datetime(content["create_time"].values[0]),
-            filled_avg_price=content["price"].values[0],
-            filled_quantity=content["qty"].values[0],
+            updated_time=try_parsing_datetime(execution.time),
+            filled_avg_price=execution.avgPrice,
+            filled_quantity=execution.cumQty,
             dealid=dealid,
             orderid=orderid
         )
@@ -463,15 +553,15 @@ class IbGateway(BaseGateway):
     def subscribe(self):
         self.api.reqMarketDataType(MarketDataTypeEnum.REALTIME) # "REALTIME", "FROZEN", "DELAYED", "DELAYED_FROZEN"
         for security in self.securities:
-            if self.ib_contracts[security] is None:
+            if self.ib_contractdetails[security] is None:
                 # construct vague contract
                 ib_contract = generate_ib_contract(security)
                 # Always remember reqId before request contracts
                 self.api.reqId += 1
-                self.ib_contracts_reqid[security] = self.api.reqId
+                self.ib_contractdetails_reqid[security] = self.api.reqId
                 self.api.reqContractDetails(reqId=self.api.reqId, contract=ib_contract)
             # blocking here: get accurate contract from IB
-            if self.ib_contracts_done[security].get()==self.api.reqId:
+            if self.ib_contractdetails_done[security].get()==self.api.reqId:
                 ib_contract = self.get_ib_contract_from_security(security)
 
                 # request bar data
@@ -485,10 +575,10 @@ class IbGateway(BaseGateway):
                     what_to_show = "TRADES"
                 self.api.reqRealTimeBars(self.api.reqId, ib_contract, 5, what_to_show, True, []) # MIDPOINT/TRADES/BID/ASK
 
-                # # request market data (quote)
-                # self.api.reqId += 1
-                # self.ib_quotes_reqid[security] = self.api.reqId
-                # self.api.reqMktData(self.api.reqId, ib_contract, "", False, False, [])
+                # request market data (quotes and orderbook)
+                self.api.reqId += 1
+                self.ib_quotes_reqid[security] = self.api.reqId
+                self.api.reqMktData(self.api.reqId, ib_contract, "", False, False, [])
             print(f"Subscribed {security}")
 
         # ret_sub, err_message = self.quote_ctx.subscribe(codes, [SubType.K_1M, SubType.QUOTE, SubType.ORDER_BOOK],
@@ -590,32 +680,53 @@ class IbGateway(BaseGateway):
 
     def place_order(self, order: Order) -> str:
         """提交订单"""
-        ret_code, data = self.trd_ctx.place_order(
-            price=order.price,
-            qty=order.quantity,
-            code=order.security.code,
-            trd_side=convert_direction_qt2futu(order.direction),
-            trd_env=self.futu_trd_env
-        )
-        if ret_code:
-            print(f"提交订单失败：{data}")
-            return ""
-        orderid = data["order_id"].values[0]  # 如果成功提交订单，一定会返回一个orderid
+        # Obtain Contract
+        contract_details = self.ib_contractdetails.get(order.security)
+        contract = contract_details.contract
+        min_tick = contract_details.minTick
+
+        # Generate Order
+        ib_order = IbOrder()
+        ib_order.action = order_direction_qt2ib(order.direction)
+        ib_order.orderType = order_type_qt2ib(order.order_type)
+        ib_order.totalQuantity = order.quantity
+        if order.order_type==OrderType.LIMIT:
+            # adjust price precision
+            if order.direction==Direction.LONG:
+                limit_price = (order.price // min_tick) * min_tick
+            elif order.direction==Direction.SHORT:
+                limit_price = (order.price // min_tick) * min_tick + min_tick
+            ib_order.lmtPrice = limit_price
+
+        # invoke next valid id
+        if self.api.nextValidIdQueue.qsize()==0:
+            self.api.reqIds(-1)
+        order_reqId = self.api.nextValidIdQueue.get()
+
+        self.api.placeOrder(order_reqId , contract, ib_order)
+        # blocking here to obtain order id (suppose to be very fast here)
+        orderid = self.ib_orderids.get(order_reqId)
         order.status = QTOrderStatus.SUBMITTED  # 修改状态为已提交
-        self.orders.put(orderid, order)  # 稍后通过callback更新order状态
+        self.orders.put(orderid, order)         # 稍后通过callback更新order状态
         return orderid
 
     def cancel_order(self, orderid):
         """取消订单"""
-        ret_code, data = self.trd_ctx.modify_order(
-            ModifyOrderOp.CANCEL,
-            orderid,
-            0,
-            0,
-            trd_env=self.futu_trd_env
-        )
-        if ret_code:
+        order_reqId = self.get_order_reqId_from_orderid(orderid)
+        if order_reqId is None:
             print(f"撤单失败：{data}")
+            return
+        self.api.cancelOrder(order_reqId)
+
+        # ret_code, data = self.trd_ctx.modify_order(
+        #     ModifyOrderOp.CANCEL,
+        #     orderid,
+        #     0,
+        #     0,
+        #     trd_env=self.futu_trd_env
+        # )
+        # if ret_code:
+        #     print(f"撤单失败：{data}")
 
     def get_broker_balance(self) -> AccountBalance:
         """获取券商资金"""
@@ -657,28 +768,34 @@ class IbGateway(BaseGateway):
 
     def get_ib_contract_from_security(self, security:Security):
         # blocking here
-        return self.ib_contracts.get(security)
+        contract_details = self.ib_contractdetails.get(security)
+        return contract_details.contract
 
-    def get_security_from_ib_contract(self, contract: Contract):
-        for security in self.ib_contracts:
+    def get_security_from_ib_contract(self, contract:Contract):
+        for security in self.ib_contractdetails:
             ib_contract = self.get_ib_contract_from_security(security)
             if ib_contract.conId==contract.conId:
                 return security
 
-    def get_security_from_ib_contracts_reqid(self, reqId: int):
-        for security in self.ib_contracts_reqid:
-            if self.ib_contracts_reqid[security]==reqId:
+    def get_security_from_ib_contractdetails_reqid(self, reqId:int):
+        for security in self.ib_contractdetails_reqid:
+            if self.ib_contractdetails_reqid[security]==reqId:
                 return security
 
-    def get_security_from_ib_5s_bars_reqid(self, reqId: int):
+    def get_security_from_ib_5s_bars_reqid(self, reqId:int):
         for security in self.ib_5s_bars_reqid:
             if self.ib_5s_bars_reqid[security]==reqId:
                 return security
 
-    def get_security_from_ib_quotes_reqid(self, reqId: int):
+    def get_security_from_ib_quotes_reqid(self, reqId:int):
         for security in self.ib_quotes_reqid:
             if self.ib_quotes_reqid[security]==reqId:
                 return security
+
+    def get_order_reqId_from_orderid(self, orderid:str):
+        for reqId in self.ib_orderids:
+            if self.ib_orderids.get(reqId)==orderid:
+                return reqId
 
 
 def get_ib_security_type(security:Security):
@@ -748,6 +865,44 @@ def generate_ib_contract(security:Security):
     if isinstance(security, Futures):
         ib_contract.lastTradeDateOrContractMonth = security.expiry_date
     return ib_contract
+
+def order_direction_qt2ib(direction:Direction):
+    if direction==Direction.LONG:
+        return "BUY"
+    elif direction==Direction.SHORT:
+        return "SELL"
+    else:
+        raise ValueError(f"Direction {direction} is not supported in IB!")
+
+def order_type_qt2ib(order_type:OrderType):
+    if order_type==OrderType.MARKET:
+        return "MKT"
+    elif order_type==OrderType.LIMIT:
+        return "LMT"
+    elif order_type==OrderType.STOP:
+        return "STP"
+    else:
+        raise ValueError(f"OrderType {order_type} is not supported in IB!")
+
+def convert_orderstatus_ib2qt(status:str)->QTOrderStatus:
+    """状态转换"""
+    # No partial filled in IB
+    # Ref: https://interactivebrokers.github.io/tws-api/order_submission.html
+    if status in ("PendingCancel", "ApiCancelled"):
+        return QTOrderStatus.UNKNOWN
+    if status in ("ApiPending", "PendingSubmit", "PreSubmitted"):
+        return QTOrderStatus.SUBMITTING
+    elif status in ("Submitted"):
+        return QTOrderStatus.SUBMITTED
+    elif status in ("Cancelled"):
+        return QTOrderStatus.CANCELLED
+    elif status in ("Filled"):
+        return QTOrderStatus.FILLED
+    elif status in ("Inactive"):
+        return QTOrderStatus.FAILED
+    else:
+        raise ValueError(f"订单状态{status}不在程序处理范围内")
+
 
 def validate_bar_interval(bars:List[Bar], bar_interval:int):
     """Validate the aggregated bar interval is as expected, bar_interval is measured with minutes"""
