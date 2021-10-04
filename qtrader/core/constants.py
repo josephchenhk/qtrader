@@ -47,6 +47,7 @@ class OrderStatus(Enum):
     Order status
     """
     UNKNOWN = "未知"
+    SUBMITTING = "正在提交"
     SUBMITTED = "已提交"
     FILLED = "全部成交"
     PART_FILLED = "部分成交"
