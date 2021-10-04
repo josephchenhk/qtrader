@@ -105,7 +105,7 @@ def try_parsing_datetime(text:str):
     """
     Parsing different datetime format strings
     """
-    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y%m%d  %H:%M:%S"):
         try:
             return datetime.strptime(text, fmt)
         except ValueError:
