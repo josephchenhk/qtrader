@@ -18,6 +18,7 @@ setup(
     author='josephchen',
     author_email='josephchenhk@gmail.com',
     packages=find_packages(), # 项目内所有自己编写的库
+    include_package_data=True,
     platforms='any',
     url='', # 项目链接,
     include_package_data=True,

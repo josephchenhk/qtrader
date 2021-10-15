@@ -1,0 +1,1 @@
+recursive-include qtrader/core *.pyd, *.so
