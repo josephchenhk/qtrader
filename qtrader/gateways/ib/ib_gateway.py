@@ -573,7 +573,7 @@ class IbGateway(BaseGateway):
                     what_to_show = "MIDPOINT"
                 else:
                     what_to_show = "TRADES"
-                self.api.reqRealTimeBars(self.api.reqId, ib_contract, 5, what_to_show, True, []) # MIDPOINT/TRADES/BID/ASK
+                self.api.reqRealTimeBars(self.api.reqId, ib_contract, 5, what_to_show, False, []) # MIDPOINT/TRADES/BID/ASK
 
                 # request market data (quotes and orderbook)
                 self.api.reqId += 1
