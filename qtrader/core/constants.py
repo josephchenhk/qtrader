@@ -10,34 +10,34 @@ class TradeMode(Enum):
     """
     Trading mode
     """
-    BACKTEST = "回测"
-    LIVETRADE = "实盘"
-    SIMULATE = "仿真"
+    BACKTEST = "BACKTEST"
+    LIVETRADE = "LIVETRADE"
+    SIMULATE = "SIMULATE"
 
 class Direction(Enum):
     """
     Direction of order/trade/position.
     """
-    LONG = "多"
-    SHORT = "空"
-    NET = "净"
+    LONG = "LONG"
+    SHORT = "SHORT"
+    NET = "NET"
 
 class Offset(Enum):
     """
     Offset of order/trade.
     """
     NONE = ""
-    OPEN = "开"
-    CLOSE = "平"
-    CLOSETODAY = "平今"
-    CLOSEYESTERDAY = "平昨"
+    OPEN = "OPEN"
+    CLOSE = "CLOSE"
+    CLOSETODAY = "CLOSETODAY"
+    CLOSEYESTERDAY = "CLOSEYESTERDAY"
 
 class OrderType(Enum):
     """
     Order type.
     """
-    LIMIT = "限价"
-    MARKET = "市价"
+    LIMIT = "LMT"
+    MARKET = "MKT"
     STOP = "STOP"
     FAK = "FAK"
     FOK = "FOK"
@@ -46,13 +46,13 @@ class OrderStatus(Enum):
     """
     Order status
     """
-    UNKNOWN = "未知"
-    SUBMITTING = "正在提交"
-    SUBMITTED = "已提交"
-    FILLED = "全部成交"
-    PART_FILLED = "部分成交"
-    CANCELLED = "已取消"
-    FAILED = "提交失败"
+    UNKNOWN = "UNKNOWN"
+    SUBMITTING = "SUBMITTING"
+    SUBMITTED = "SUBMITTED"
+    FILLED = "FILLED"
+    PART_FILLED = "PART_FILLED"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
 
 class Exchange(Enum):
     """
@@ -74,10 +74,10 @@ class Cash(Enum):
     """
     Currency
     """
-    NONE = "未知货币"
-    HKD = "港元"
-    USD = "美元"
-    CNH = "离岸人民币"
+    NONE = "UNKNOWN"
+    HKD = "HKD"
+    USD = "USD"
+    CNH = "CNH"
 
 
 

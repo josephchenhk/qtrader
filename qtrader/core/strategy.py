@@ -4,7 +4,7 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: strategy.py
 # @Software: PyCharm
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from qtrader.core.engine import Engine
 from qtrader.core.portfolio import Portfolio
@@ -30,6 +30,8 @@ class BaseStrategy:
             strategy_version=strategy_version,
             init_strategy_cash=init_strategy_cash,
         )
+        # 记录策略每一个时间点执行的操作
+        self._actions = {gateway_name:"" for gateway_name in self.engine.gateways}
 
     def init_strategy(self):
         self.engine.log.info("完成策略初始化")
@@ -45,3 +47,13 @@ class BaseStrategy:
 
     def get_portfolio_value(self, gateway_name:str):
         return self.engine.portfolios[gateway_name].value
+
+    def get_action(self, gateway_name:str):
+        return self._actions[gateway_name]
+
+    def reset_action(self, gateway_name:str):
+        self._actions[gateway_name] = ""
+
+    def update_action(self, gateway_name:str, action:Dict[str,Any]):
+        self._actions[gateway_name] += str(action)
+        self._actions[gateway_name] += "|"
