@@ -20,11 +20,11 @@ setup(
     include_package_data=True,
     packages=find_packages(), # 项目内所有自己编写的库
     package_data={"": [
-        "*.ico",
-        "*.ini",
-        "*.dll",
-        "*.so",
-        "*.pyd",
+        "./*.ico",
+        "./*.ini",
+        "./*.dll",
+        "./*.so",
+        "./*.pyd",
     ]},
     platforms='any',
     url='', # 项目链接,
