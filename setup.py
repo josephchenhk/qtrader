@@ -19,7 +19,7 @@ setup(
     description='setup qtrader',
     long_description='',
     license='MIT',    # 遵循的协议
-    install_requires=['sqlalchemy', 'pandas', 'numpy', 'pytz', 'clickhouse-driver'], # 这里面填写项目用到的第三方依赖
+    install_requires=['sqlalchemy', 'pandas', 'numpy', 'pytz', 'clickhouse-driver', 'matplotlib', 'plotly'], # 这里面填写项目用到的第三方依赖
     author='josephchen',
     author_email='josephchenhk@gmail.com',
     include_package_data=True,
