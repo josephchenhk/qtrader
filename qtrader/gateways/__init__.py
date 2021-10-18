@@ -7,5 +7,9 @@
 
 from .base_gateway import BaseGateway
 from .backtest import BacktestGateway
-from .futu import FutuGateway
-from .ib import IbGateway
+try:
+    from .futu import FutuGateway
+    from .ib import IbGateway
+except Exception as e:
+    print(e)
+    pass
