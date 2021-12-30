@@ -6,3 +6,4 @@
 # @Software: PyCharm
 
 from .ib_gateway import IbGateway
+from .ib_fees import IbHKEquityFees

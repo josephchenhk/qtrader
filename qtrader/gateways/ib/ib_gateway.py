@@ -52,35 +52,6 @@ from qtrader.gateways.base_gateway import BaseFees
 
 IB = GATEWAYS.get("Ib")
 
-class IbFees(BaseFees):
-    """
-
-    """
-
-    def __init__(self, *deals:Deal):
-        # IB收费
-        commissions = 0       # 佣金
-        platform_fees = 0     # 平台使用费
-        # IB代收费
-        system_fees = 0       # 交易系统使用费
-        settlement_fees = 0   # 交收费
-        stamp_fees = 0        # 印花税
-        trade_fees = 0        # 交易费
-        transaction_fees = 0  # 交易征费
-
-        # 总费用
-        total_fees = commissions + platform_fees + system_fees + settlement_fees + stamp_fees + trade_fees + transaction_fees
-
-        # TODO：未写IB收费细则
-        self.commissions = commissions
-        self.platform_fees = platform_fees
-        self.system_fees = system_fees
-        self.settlement_fees = settlement_fees
-        self.stamp_fees = stamp_fees
-        self.trade_fees = trade_fees
-        self.transaction_fees = transaction_fees
-        self.total_fees = total_fees
-
 
 class IbWrapper(EWrapper):
     pass
@@ -427,7 +398,7 @@ class IbGateway(BaseGateway):
             gateway_name:str,
             start:datetime=None,
             end:datetime=None,
-            fees:BaseFees=IbFees,
+            fees:BaseFees=BaseFees,
         ):
 
         super().__init__(securities, gateway_name)
@@ -548,6 +519,8 @@ class IbGateway(BaseGateway):
         return datetime.now()
 
     def set_trade_mode(self, trade_mode: TradeMode):
+        if trade_mode not in (TradeMode.SIMULATE, TradeMode.LIVETRADE):
+            raise ValueError(f"IbGateway only supports `SIMULATE` or `LIVETRADE` mode, {trade_mode} was passed in instead.")
         self.trade_mode = trade_mode
 
     def subscribe(self):
@@ -581,14 +554,6 @@ class IbGateway(BaseGateway):
                 self.api.reqMktData(self.api.reqId, ib_contract, "", False, False, [])
             print(f"Subscribed {security}")
 
-        # ret_sub, err_message = self.quote_ctx.subscribe(codes, [SubType.K_1M, SubType.QUOTE, SubType.ORDER_BOOK],
-        #                                                 subscribe_push=True)
-        # # 订阅成功后FutuOpenD将持续收到服务器的推送，False代表暂时不需要推送给脚本
-        # if ret_sub == RET_OK:  # 订阅成功
-        #     print(f"成功订阅1min K线、报价和订单簿: {self.securities}")
-        # else:
-        #     raise ValueError(f"订阅失败: {err_message}")
-
     def is_trading_time(self, cur_datetime: datetime) -> bool:
         """
         判断当前时间是否属于交易时间段
@@ -616,7 +581,7 @@ class IbGateway(BaseGateway):
         if self.ib_consolidated_bars_done[security].get()==reqId:
             bars = self.ib_5s_bars[security][:]
             if not validate_bar_interval(bars, 1):
-                print(f"获取最近bar数据失败：{data}")
+                print(f"获取最近bar数据失败：{bars}")
                 return
             consolidated_bar = Bar(
                 datetime=get_time_key(bars),
@@ -631,21 +596,7 @@ class IbGateway(BaseGateway):
 
     def get_recent_capital_distribution(self, security: Stock) -> CapitalDistribution:
         """capital distribution"""
-        ret_code, data = self.quote_ctx.get_capital_distribution(security.code)
-        if ret_code:
-            print(f"获取资金分布失败：{data}")
-            return
-        cap_dist = CapitalDistribution(
-            datetime=datetime.strptime(data["update_time"].values[0], "%Y-%m-%d %H:%M:%S"),
-            security=security,
-            capital_in_big=data["capital_in_big"].values[0],
-            capital_in_mid=data["capital_in_mid"].values[0],
-            capital_in_small=data["capital_in_small"].values[0],
-            capital_out_big=data["capital_out_big"].values[0],
-            capital_out_mid=data["capital_out_mid"].values[0],
-            capital_out_small=data["capital_out_small"].values[0]
-        )
-        return cap_dist
+        raise NotImplementedError("get_recent_capital_distribution method is not yet implemented in IB gateway!")
 
     def get_recent_data(self, security: Security, **kwargs) -> Dict[str, Union[Bar, CapitalDistribution]] or Union[
         Bar, CapitalDistribution]:
@@ -718,15 +669,6 @@ class IbGateway(BaseGateway):
             return
         self.api.cancelOrder(order_reqId)
 
-        # ret_code, data = self.trd_ctx.modify_order(
-        #     ModifyOrderOp.CANCEL,
-        #     orderid,
-        #     0,
-        #     0,
-        #     trd_env=self.futu_trd_env
-        # )
-        # if ret_code:
-        #     print(f"撤单失败：{data}")
 
     def get_broker_balance(self) -> AccountBalance:
         """获取券商资金"""
