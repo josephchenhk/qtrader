@@ -12,7 +12,7 @@ from dateutil.relativedelta import relativedelta
 
 from qtrader.config import DATA_PATH, DATA_MODEL, TIME_STEP
 from qtrader.core.balance import AccountBalance
-from qtrader.core.constants import TradeMode, OrderStatus, Direction
+from qtrader.core.constants import TradeMode, OrderStatus, Direction, OrderType
 from qtrader.core.data import Quote, OrderBook, Bar, CapitalDistribution
 from qtrader.core.data import _get_data, _get_data_iterator
 from qtrader.core.deal import Deal
@@ -94,6 +94,7 @@ class BacktestGateway(BaseGateway):
         :param fees:
         :return:
         """
+        self.set_trade_mode(TradeMode.BACKTEST)
         self.DTYPES = dtypes
         assert set(dtypes.keys())==set(DATA_PATH.keys()), (
             f"在{self.__class__.__name__}的__init__函数里，"
@@ -136,6 +137,8 @@ class BacktestGateway(BaseGateway):
 
     def set_trade_mode(self, trade_mode:TradeMode):
         """设置交易模式"""
+        if trade_mode != TradeMode.BACKTEST:
+            raise ValueError(f"BacktestGateway only supports `BACKTEST` mode, {trade_mode} was passed in instead.")
         self.trade_mode = trade_mode
 
     def is_trading_time(self, cur_datetime:datetime)->bool:
@@ -260,7 +263,11 @@ class BacktestGateway(BaseGateway):
         """最简单的处理，假设全部成交"""
         order.filled_time = self.market_datetime
         order.filled_quantity = order.quantity
-        order.filled_avg_price = order.price
+        if order.order_type == OrderType.LIMIT:
+            order.filled_avg_price = order.price
+        elif order.order_type == OrderType.MARKET:
+            bar = self.get_recent_data(order.security, order.create_time)
+            order.filled_avg_price = bar.close
         order.status = OrderStatus.FILLED
         orderid = "bt-order-" + str(uuid.uuid4())
         dealid = "bt-deal-" + str(uuid.uuid4())
@@ -272,8 +279,8 @@ class BacktestGateway(BaseGateway):
             offset=order.offset,
             order_type=order.order_type,
             updated_time=self.market_datetime,
-            filled_avg_price=order.price,
-            filled_quantity=order.quantity,
+            filled_avg_price=order.filled_avg_price,
+            filled_quantity=order.filled_quantity,
             dealid=dealid,
             orderid=orderid
         )
