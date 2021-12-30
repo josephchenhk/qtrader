@@ -100,6 +100,22 @@ def timeit(func):
 
     return wrapper
 
+def safe_call(func):
+    """
+    Try to call a function. If encounter error, just give warning and skip, will not interrupt the program.
+    :param func:
+    :return:
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            res = func(*args, **kwargs)
+            return res
+        except Exception as e:
+            return e
+    return wrapper
+
+
 
 def try_parsing_datetime(text:str):
     """
