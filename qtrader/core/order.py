@@ -24,6 +24,7 @@ class Order:
     order_type: OrderType
     create_time: datetime
     updated_time: datetime = None
+    stop_price: float = None
     filled_avg_price: float = 0
     filled_quantity: int = 0
     status: OrderStatus = OrderStatus.UNKNOWN
