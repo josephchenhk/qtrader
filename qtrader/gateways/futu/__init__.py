@@ -6,3 +6,4 @@
 # @Software: PyCharm
 
 from .futu_gateway import FutuGateway
+from .futu_fees import FutuHKEquityFees
