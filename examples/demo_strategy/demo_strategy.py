@@ -3,11 +3,22 @@
 # @Author  : Joseph Chen
 # @Email   : josephchenhk@gmail.com
 # @FileName: demo_strategy.py
-# @Software: PyCharm
+
+"""
+Copyright (C) 2020 Joseph Chen - All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the JXW license, which unfortunately won't be
+written for another century.
+
+You should have received a copy of the JXW license with
+this file. If not, please write to: josephchenhk@gmail.com
+"""
+
 from time import sleep
 from typing import Dict, List
+from random import random
 
-from qtrader.core.constants import Direction, Offset, OrderType, TradeMode
+from qtrader.core.constants import Direction, Offset, OrderType, TradeMode, OrderStatus
 from qtrader.core.data import Bar
 from qtrader.core.engine import Engine
 from qtrader.core.security import Stock, Security
@@ -28,24 +39,25 @@ class DemoStrategy(BaseStrategy):
             strategy_version=strategy_version,
             init_strategy_cash=init_strategy_cash,
         )
-        # 股票
+        # security list
         self.securities = securities
-        # 执行引擎
+        # execution engine
         self.engine = engine
-        # 投资组合管理
+        # portfolios
         self.portfolios = engine.portfolios
-        # 等待执行时间
+        # For simulation/live trading, set the waiting time > 0
         self.sleep_time = 0
         for gateway_name in engine.gateways:
             if engine.gateways[gateway_name].trade_mode!=TradeMode.BACKTEST:
-                self.sleep_time = 15
+                self.sleep_time = 5
 
     def init_strategy(self):
         pass
 
     def on_bar(self, cur_data:Dict[str,Dict[Security, Bar]]):
 
-        self.engine.log.info("-"*30 + "进入on_bar" + "-"*30)
+        self.engine.log.info("-"*30 + "Enter on_bar" + "-"*30)
+        self.engine.log.info(cur_data)
 
         for gateway_name in self.engine.gateways:
 
@@ -53,18 +65,22 @@ class DemoStrategy(BaseStrategy):
                 continue
 
             # check balance
-            balance = self.engine.get_balance(gateway_name=gateway_name )
+            balance = self.engine.get_balance(gateway_name=gateway_name)
             self.engine.log.info(f"{balance}")
+            broker_balance = self.engine.get_broker_balance(gateway_name=gateway_name)
+            self.engine.log.info(f"{broker_balance}")
 
             # check position
-            positions = self.engine.get_all_positions(gateway_name=gateway_name )
+            positions = self.engine.get_all_positions(gateway_name=gateway_name)
             self.engine.log.info(f"{positions}")
+            broker_positions = self.engine.get_all_broker_positions(gateway_name=gateway_name)
+            self.engine.log.info(f"{broker_positions}")
 
             # check orders
-            all_orders = self.engine.get_all_orders(gateway_name=gateway_name )
+            all_orders = self.engine.get_all_orders(gateway_name=gateway_name)
 
             # check deals
-            all_deals = self.engine.get_all_deals(gateway_name=gateway_name )
+            all_deals = self.engine.get_all_deals(gateway_name=gateway_name)
 
             # send orders
             for security in cur_data[gateway_name]:
@@ -75,24 +91,43 @@ class DemoStrategy(BaseStrategy):
                 bar = cur_data[gateway_name][security]
                 orderbook = self.engine.get_orderbook(security=security, gateway_name=gateway_name )
                 quote = self.engine.get_quote(security=security, gateway_name=gateway_name )
-                data = cur_data[gateway_name][security]
                 self.engine.log.info(quote)
                 self.engine.log.info(orderbook)
-                self.engine.log.info(data)
 
-                # if isinstance(data, dict): price = data["k1m"].close
-                # elif isinstance(data, Bar): price = data.close
-                # else: raise ValueError(f"data不是合法的格式！")
+                long_position = self.engine.get_position(security=security, direction=Direction.LONG,
+                                                         gateway_name=gateway_name)
+                short_position = self.engine.get_position(security=security, direction=Direction.SHORT,
+                                                         gateway_name=gateway_name)
 
-                order_instruct = dict(
-                    security=security,
-                    price=bar.close if quote is None else quote.last_price,
-                    quantity=security.lot_size,
-                    direction=Direction.SHORT,
-                    offset=Offset.OPEN,
-                    order_type=OrderType.LIMIT,
-                    gateway_name=gateway_name ,
-                )
+                # Randomly open long or short positions, and
+                if long_position:
+                    order_instruct = dict(
+                        security=security,
+                        quantity=long_position.quantity,
+                        direction=Direction.SHORT,
+                        offset=Offset.CLOSE,
+                        order_type=OrderType.MARKET,
+                        gateway_name=gateway_name,
+                    )
+                elif short_position:
+                    order_instruct = dict(
+                        security=security,
+                        quantity=short_position.quantity,
+                        direction=Direction.LONG,
+                        offset=Offset.CLOSE,
+                        order_type=OrderType.MARKET,
+                        gateway_name=gateway_name,
+                    )
+                else:
+                    direction = Direction.LONG if random() > 0.5 else Direction.SHORT
+                    order_instruct = dict(
+                        security=security,
+                        quantity=1,
+                        direction=direction,
+                        offset=Offset.OPEN,
+                        order_type=OrderType.MARKET,
+                        gateway_name=gateway_name,
+                    )
                 self.engine.log.info(f"提交订单:\n{order_instruct}")
                 orderid = self.engine.send_order(**order_instruct)
                 if orderid=="":
@@ -107,7 +142,12 @@ class DemoStrategy(BaseStrategy):
                 for deal in deals:
                     self.portfolios[gateway_name].update(deal)
 
-                if orderid:
-                    self.engine.cancel_order(orderid=orderid, gateway_name=gateway_name)
-                    self.engine.log.info(f"取消订单{order}")
+                if order.status==OrderStatus.FILLED:
+                    self.engine.log.info(f"订单已成交{orderid}")
+                else:
+                    err = self.engine.cancel_order(orderid=orderid, gateway_name=gateway_name)
+                    if err:
+                        self.engine.log.info(f"不能取消订单{orderid},因爲{err}")
+                    else:
+                        self.engine.log.info(f"已經取消订单{orderid}")
 
