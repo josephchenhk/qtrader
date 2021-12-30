@@ -179,7 +179,7 @@ def _get_data(security:Stock,
             data_files_in_range.append(data_file)
     # 合并指定时间段内的历史数据
     full_data = pd.DataFrame()
-    for data_file in data_files_in_range:
+    for data_file in sorted(data_files_in_range):
         data = pd.read_csv(f"{DATA_PATH[dfield]}/{security.code}/{data_file}")
         if dtype is None:
             # 检查数据是否有时间戳
