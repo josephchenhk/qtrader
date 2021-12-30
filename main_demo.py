@@ -24,19 +24,20 @@ from datetime import time as Time
 
 from qtrader.core.constants import TradeMode, Exchange
 from qtrader.core.event_engine import BarEventEngineRecorder, BarEventEngine
-from qtrader.core.security import Futures
+from qtrader.core.security import Stock
 from qtrader.core.engine import Engine
 from qtrader.gateways import BacktestGateway
 
 from examples.demo_strategy import DemoStrategy
 
 if __name__=="__main__":
+    # Security
     stock_list = [
-        Futures(code="HK.01157", lot_size=100, security_name="中联重科", exchange=Exchange.SEHK),
+        Stock(code="HK.01157", lot_size=100, security_name="中联重科", exchange=Exchange.SEHK),
     ]
 
+    # Gateway
     gateway_name = "Backtest"
-    init_capital = 100000
     gateway = BacktestGateway(
         securities=stock_list,
         start=datetime(2021, 3, 15, 9, 30, 0, 0),
@@ -45,14 +46,14 @@ if __name__=="__main__":
     )
     gateway.SHORT_INTEREST_RATE = 0.0
     gateway.set_trade_mode(TradeMode.BACKTEST)
-    # Asia time
     gateway.TRADING_HOURS_AM = [Time(9, 30, 0), Time(12, 0, 0)]
     gateway.TRADING_HOURS_PM = [Time(13, 0, 0), Time(16, 0, 0)]
 
-    # 执行引擎
+    # Core engine
     engine = Engine(gateways={gateway_name: gateway})
 
-    # 初始化策略
+    # Strategy initialization
+    init_capital = 100000
     strategy_account = "DemoStrategy"
     strategy_version = "1.0"
     strategy = DemoStrategy(
@@ -63,11 +64,16 @@ if __name__=="__main__":
         engine=engine)
     strategy.init_strategy()
 
-    # 事件引擎启动
+    # Recorder
     recorder = BarEventEngineRecorder()
+
+    # Event engine
     event_engine = BarEventEngine(strategy, recorder)
+
+    # Start event engine
     event_engine.run()
 
+    # Save results and shutdown program
     result_path = recorder.save_csv()
     plugins = engine.get_plugins()
     if "analysis" in plugins:
