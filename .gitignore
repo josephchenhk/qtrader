@@ -152,31 +152,4 @@ log/*
 qtrader/log/*
 results/*
 
-# main
-main_pairtrading.py
-main_momentum.py
-main_capital.py
 
-# config
-qtrader/config/config.py
-qtrader/config/config-private.py
-
-# strategies
-examples/pairtrade_strategy/*
-examples/momentum_strategy/*
-examples/capital_strategy/*
-
-# data
-examples/data/clickhouse/*
-
-# plugins
-qtrader/plugins/clickhouse/*
-
-# engines
-qtrader/core/engine.c
-qtrader/core/engine.py
-qtrader/core/engine.pyx
-qtrader/core/event_engine.c
-qtrader/core/event_engine.py
-qtrader/core/event_engine.pyx
-qtrader/core/setup.py
