@@ -4,6 +4,16 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: config.py
 
+"""
+Copyright (C) 2020 Joseph Chen - All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the JXW license, which unfortunately won't be
+written for another century.
+
+You should have received a copy of the JXW license with
+this file. If not, please write to: josephchenhk@gmail.com
+"""
+
 BACKTEST_GATEWAY = {
     "broker_name": "BACKTEST",
     "broker_account": "",
@@ -45,7 +55,7 @@ GATEWAYS = {
     "Cqg": CQG_GATEWAY
 }
 
-TIME_STEP = 60000  # 设置事件框架监测步长 ms
+TIME_STEP = 60000  # time step in milliseconds
 
 DATA_PATH = {
     "kline": "path_to_your_qtrader_folder/examples/data/k_line/K_1M",
