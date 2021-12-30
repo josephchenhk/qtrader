@@ -5,4 +5,5 @@
 # @FileName: __init__.py.py
 # @Software: PyCharm
 
-from .pnl import plot_pnl
+from .performance import plot_pnl
+from .performance import PerformanceCTA
