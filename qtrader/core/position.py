@@ -87,7 +87,7 @@ class Position:
         for security in self.holdings:
             if Direction.LONG in self.holdings[security]:
                 positions.append(self.holdings[security][Direction.LONG])
-            elif Direction.SHORT in self.holdings[security]:
+            if Direction.SHORT in self.holdings[security]:
                 positions.append(self.holdings[security][Direction.SHORT])
         return positions
 
