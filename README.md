@@ -16,9 +16,14 @@ and seamlessly switch to live trading without any pain.
 You may run the folllowing command to install QTrader immediately:
 
 ```python
-# python 3.8 or above is supported
+# Virtual environment is recommended (python 3.8 or above is supported)
 >> conda create -n qtrader python=3.8
 >> conda activate qtrader
+
+# Install stable version from pip (currently version 0.0.2)
+>> pip install qtrader
+
+# Alternatively, install latest version from github 
 >> pip install git+https://github.com/josephchenhk/qtrader@master
 ```
 
