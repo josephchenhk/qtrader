@@ -68,6 +68,7 @@ class Exchange(Enum):
     GLOBEX = "GLOBEX"       # futures
     NYMEX = "NYMEX"         # COMEX (gold) futures
     SMART = "SMART"
+    SGX = "SGX"             # Singapore Exchange (https://www.sgx.com/)
 
 
 class Cash(Enum):
