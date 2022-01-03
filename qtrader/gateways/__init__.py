@@ -10,6 +10,6 @@ from .backtest import BacktestGateway
 try:
     from .futu import FutuGateway
     from .ib import IbGateway
-except Exception as e:
+    from .cqg import CqgGateway
+except ImportError as e:
     print(e)
-    pass

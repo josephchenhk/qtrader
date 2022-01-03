@@ -111,11 +111,13 @@ class BaseGateway(ABC):
 
 class BaseFees:
     """收费明细，作为基类被覆写"""
-    commissions: float = 0
-    platform_fees: float = 0
-    system_fees: float = 0
-    settlement_fees: float = 0
-    stamp_fees: float = 0
-    trade_fees: float = 0
-    transaction_fees: float = 0
-    total_fees: float = 0
+    commissions:float = 0              # Broker fee
+    platform_fees:float = 0            # Broker fee
+    system_fees:float = 0              # Exchange fee
+    settlement_fees:float = 0          # Clearing fee
+    stamp_fees:float = 0               # Government Stamp Duty
+    trade_fees:float = 0               # Exchange Fee
+    transaction_fees:float = 0         # (SFC) transaction levy
+    total_fees:float = 0
+    total_trade_amount:float = 0
+    total_number_of_trades:float = 0
