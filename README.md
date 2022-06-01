@@ -1,6 +1,14 @@
 # QTrader: A Light Event-Driven Algorithmic Trading Engine
 
-**Latest update on 12/30/2021**
+<p align="center">
+    <img src ="https://img.shields.io/badge/version-0.1.0-blueviolet.svg"/>
+    <img src ="https://img.shields.io/badge/platform-windows|linux|macos-yellow.svg"/>
+    <img src ="https://img.shields.io/badge/python-3.8|3.9|3.10-blue.svg" />
+    <img src ="https://img.shields.io/github/workflow/status/vnpy/vnpy/Python%20application/master"/>
+    <img src ="https://img.shields.io/github/license/vnpy/vnpy.svg?color=orange"/>
+</p>
+
+**Latest update on 06/01/2022**
 
 QTrader is a light and flexible event-driven algorithmic trading engine that can be used to backtest strategies, 
 and seamlessly switch to live trading without any pain.
@@ -186,4 +194,14 @@ That's it! You switch from backtest to simulation / live trading mode now.
 
 **Important Notice**: In the demo sample, the live trading mode will keep sending orders, please be aware 
 of the risk when running it.
+
+## Contributing
+* Fork it (https://github.com/josephchenhk/qtrader/fork)
+* Study how it's implemented.
+* Create your feature branch (git checkout -b my-new-feature).
+* Use [flake8](https://pypi.org/project/flake8/) to ensure your code format
+complies with PEP8.
+* Commit your changes (git commit -am 'Add some feature').
+* Push to the branch (git push origin my-new-feature).
+* Create a new Pull Request.
 
