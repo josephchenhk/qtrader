@@ -370,7 +370,7 @@ class CELEnvironment:
         self.errorHappened = False
 
     def Init(self, sinkType, customAPIConfiguration):
-        self.thread = Thread(target=self.threadedFunction, args=(sinkType,))
+        self.thread = Thread(target=self.threadedFunction, args=(sinkType,), name="cel_threadfunc")
         self.thread.start()
 
         Trace("Waiting for CQGCEL creation..")

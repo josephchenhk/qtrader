@@ -14,5 +14,12 @@ You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
 
-from .cqg_gateway import CqgGateway
-from .cqg_fees import CQGFees
+try:
+    from .cqg_gateway import CqgGateway
+except ImportError as e:
+    print(f"{e.__class__}: {e.msg}")
+
+try:
+    from .cqg_fees import CQGFees
+except ImportError as e:
+    print(f"{e.__class__}: {e.msg}")

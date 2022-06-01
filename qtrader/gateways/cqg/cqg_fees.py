@@ -20,28 +20,35 @@ from qtrader.gateways.base_gateway import BaseFees
 
 class CQGFees(BaseFees):
     """
+    CQG fee model
     """
 
-    def __init__(self, *deals:Deal):
-        # 平台收费
-        commissions = 0       # 佣金
-        platform_fees = 0     # 平台使用费
-        # 平台代收费
-        system_fees = 0       # 交易系统使用费
-        settlement_fees = 0   # 交收费
-        stamp_fees = 0        # 印花税
-        trade_fees = 0        # 交易费
-        transaction_fees = 0  # 交易征费
+    def __init__(self, *deals: Deal):
+        # Platform fees (to the platform)
+        commissions = 0
+        platform_fees = 0
+        # Agency fees (to other parties such as exchange, tax authorities)
+        system_fees = 0
+        settlement_fees = 0
+        stamp_fees = 0
+        trade_fees = 0
+        transaction_fees = 0
 
         for deal in deals:
-            security = deal.security
             # price = deal.filled_avg_price
             quantity = deal.filled_quantity
-            # direction = deal.direction
-            commissions += 1.92 * quantity
+            commissions += 1.92 * quantity  # 1.92 per contract
 
-        # 总费用
-        total_fees = commissions + platform_fees + system_fees + settlement_fees + stamp_fees + trade_fees + transaction_fees
+        # Total fees
+        total_fees = (
+            commissions
+            + platform_fees
+            + system_fees
+            + settlement_fees
+            + stamp_fees
+            + trade_fees
+            + transaction_fees
+        )
 
         self.commissions = commissions
         self.platform_fees = platform_fees

@@ -5,25 +5,33 @@
 # @FileName: security.py
 # @Software: PyCharm
 
-from dataclasses import dataclass, replace
+"""
+Copyright (C) 2020 Joseph Chen - All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the JXW license, which unfortunately won't be
+written for another century.
+
+You should have received a copy of the JXW license with
+this file. If not, please write to: josephchenhk@gmail.com
+"""
+
+from dataclasses import dataclass
 
 from qtrader.core.constants import Exchange
 
 
 @dataclass(frozen=True)
 class Security:
-    """
-    证券的基本属性
-    """
-
-    code:str
-    security_name:str
-    lot_size:int = None
-    exchange:Exchange = None
-    expiry_date:str = None
+    """Base class for different asset types"""
+    code: str
+    security_name: str
+    lot_size: int = None
+    exchange: Exchange = None
+    expiry_date: str = None
 
     def __eq__(self, other):
-        return (self.code==other.code) and (self.security_name==other.security_name)
+        return (self.code == other.code) and (
+            self.security_name == other.security_name)
 
     def __hash__(self):
         return hash(f"{self.security_name}|{self.code}|{self.exchange.value}")
@@ -31,14 +39,11 @@ class Security:
 
 @dataclass(frozen=True)
 class Stock(Security):
-    """
-    股票的基本属性
-    """
-
-    code:str
-    security_name:str
-    lot_size:int = 1                   # 默认1手
-    exchange:Exchange = Exchange.SEHK  # 默认香港股票
+    """Cash equity"""
+    code: str
+    security_name: str
+    lot_size: int = 1                   # default to 1 lot
+    exchange: Exchange = Exchange.SEHK  # default to HK market
     expiry_date = None
 
     def __post_init__(self):
@@ -47,14 +52,11 @@ class Stock(Security):
 
 @dataclass(frozen=True)
 class Currency(Security):
-    """
-    外汇的基本属性
-    """
-
-    code:str
-    security_name:str
-    lot_size:int = 1000                    # 默认1000
-    exchange:Exchange = Exchange.IDEALPRO  # 默认IDEALPRO
+    """Foreign exchange"""
+    code: str
+    security_name: str
+    lot_size: int = 1000                    # default to 1000
+    exchange: Exchange = Exchange.IDEALPRO  # default to IDEALPRO
     expiry_date = None
 
     def __post_init__(self):
@@ -63,14 +65,11 @@ class Currency(Security):
 
 @dataclass(frozen=True)
 class Futures(Security):
-    """
-    期货的基本属性
-    """
-
-    code:str
-    security_name:str
-    lot_size:int = 1000                    # 默认1000
-    exchange:Exchange = Exchange.SMART     # 默认SMART
+    """Futures"""
+    code: str
+    security_name: str
+    lot_size: int = 1000                 # default to 1000
+    exchange: Exchange = Exchange.SMART  # default to SMART
     expiry_date = ""
 
     def __post_init__(self):

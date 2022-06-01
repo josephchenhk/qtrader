@@ -5,6 +5,16 @@
 # @FileName: ib_fees.py
 # @Software: PyCharm
 
+"""
+Copyright (C) 2020 Joseph Chen - All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the JXW license, which unfortunately won't be
+written for another century.
+
+You should have received a copy of the JXW license with
+this file. If not, please write to: josephchenhk@gmail.com
+"""
+
 import math
 
 from qtrader.core.deal import Deal
@@ -24,7 +34,7 @@ class IbHKEquityFees(BaseFees):
     - Hong Kong Tier Commission And Fixed Commission (https://www.interactivebrokers.com.hk/en/index.php?f=49708)
     """
 
-    def __init__(self, *deals:Deal):
+    def __init__(self, *deals: Deal):
         for deal in deals:
             price = deal.filled_avg_price
             size = deal.filled_quantity
@@ -32,11 +42,11 @@ class IbHKEquityFees(BaseFees):
             self.total_number_of_trades += 1
             self.total_trade_amount += trade_amount
 
-            # 交易系统使用费（Exchange Fee）
+            # Exchange Fee
             system_fee = round(0.50, 2)
             self.system_fees += system_fee
 
-            # 交收费（CLearing Fee）
+            # CLearing Fee
             settlement_fee = 0.00002 * trade_amount
             if settlement_fee < 2.0:
                 settlement_fee = 2.0
@@ -45,37 +55,36 @@ class IbHKEquityFees(BaseFees):
             settlement_fee = round(settlement_fee, 2)
             self.settlement_fees += settlement_fee
 
-            # 印花税（Government Stamp Duty, applies only to stocks）
+            # Government Stamp Duty, applies only to stocks
             stamp_fee = math.ceil(0.0013 * trade_amount)
             self.stamp_fees += stamp_fee
 
-            # 交易费（Exchange Fee）
+            # Exchange Fee
             trade_fee = max(0.00005 * trade_amount, 0.01)
             trade_fee = round(trade_fee, 2)
             self.trade_fees += trade_fee
 
-            # 交易征费（SFC transaction levy, applies to stocks and warrrants）
+            # SFC transaction levy, applies to stocks and warrrants
             transaction_fee = max(0.000027 * trade_amount, 0.01)
             transaction_fee = round(transaction_fee, 2)
             self.transaction_fees += transaction_fee
 
-        # 佣金(Hong Kong Fixed Commissions)
+        # Hong Kong Fixed Commissions
         self.commissions += max(0.0008 * self.total_trade_amount, 18)
         self.commissions = round(self.commissions, 2)
 
-        # 平台使用费
+        # Platform fee
         self.platform_fees = 0
 
-        # 总费用
+        # Total fee
         self.total_fees = (
-            self.commissions +
-            self.platform_fees +
-            self.system_fees +
-            self.settlement_fees +
-            self.stamp_fees +
-            self.trade_fees +
-            self.transaction_fees
-        )
+            self.commissions
+            + self.platform_fees
+            + self.system_fees
+            + self.settlement_fees
+            + self.stamp_fees
+            + self.trade_fees
+            + self.transaction_fees)
 
 
 class IbSHSZHKConnectEquityFees(BaseFees):
@@ -91,7 +100,7 @@ class IbSHSZHKConnectEquityFees(BaseFees):
     - Hong Kong Tier Commission And Fixed Commission (https://www.interactivebrokers.com.hk/en/index.php?f=49708)
     """
 
-    def __init__(self, *deals:Deal):
+    def __init__(self, *deals: Deal):
         for deal in deals:
             price = deal.filled_avg_price
             size = deal.filled_quantity
@@ -99,40 +108,39 @@ class IbSHSZHKConnectEquityFees(BaseFees):
             self.total_number_of_trades += 1
             self.total_trade_amount += trade_amount
 
-            # 交易系统使用费（Exchange Fee, security management）
+            # Exchange Fee, security management
             system_fee = round(0.00002 * trade_amount, 2)
             self.system_fees += system_fee
 
-            # 交收费（CLearing Fee）
+            # CLearing Fee
             settlement_fee = round(0.00004 * trade_amount, 2)
             self.settlement_fees += settlement_fee
 
-            # 印花税（Sale proceeds Stamp Duty, applies only to stocks）
+            # Sale proceeds Stamp Duty, applies only to stocks
             stamp_fee = round(0.001 * trade_amount, 2)
             self.stamp_fees += stamp_fee
 
-            # 交易费（Exchange Fee, handling fee）
+            # Exchange Fee, handling fee
             trade_fee = round(0.0000487 * trade_amount, 2)
             self.trade_fees += trade_fee
 
-            # 交易征费（SFC transaction levy, applies to stocks and warrrants）
+            # SFC transaction levy, applies to stocks and warrrants
             transaction_fee = 0
             self.transaction_fees += transaction_fee
 
-        # 佣金(Hong Kong Fixed Commissions)
+        # Hong Kong Fixed Commissions
         self.commissions += max(0.0008 * self.total_trade_amount, 18)
         self.commissions = round(self.commissions, 2)
 
-        # 平台使用费
+        # Platform fee
         self.platform_fees = 0
 
-        # 总费用
+        # Total fee
         self.total_fees = (
-            self.commissions +
-            self.platform_fees +
-            self.system_fees +
-            self.settlement_fees +
-            self.stamp_fees +
-            self.trade_fees +
-            self.transaction_fees
-        )
+            self.commissions
+            + self.platform_fees
+            + self.system_fees
+            + self.settlement_fees
+            + self.stamp_fees
+            + self.trade_fees
+            + self.transaction_fees)

@@ -137,19 +137,19 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Raw data file
-qtrader/data/
-
 # IDE
 .DS_Store
 .idea/
-
-# private
-private/*
 
 # log
 log/*
 qtrader/log/*
 results/*
+
+# core
+qtrader/config/config.py
+qtrader/core/engine.py
+qtrader/core/event_engine.py
+qtrader/core/setup.py
 
 

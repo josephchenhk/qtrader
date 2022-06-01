@@ -1,0 +1,163 @@
+FUT.GC:
+  initial_margin: 7150
+  contract_size: 100
+  commission: 1.92
+  sessions:
+    - - 1970-01-01 7:00:00
+      - 1970-01-01 5:00:00
+  market_open: 1970-01-01 07:00:00
+  market_close: 1970-01-01 05:00:00
+
+FUT.SI:
+  initial_margin: 10450
+  contract_size: 5000
+  commission: 1.92
+  sessions:
+    - - 1970-01-01 7:00:00
+      - 1970-01-01 5:00:00
+  market_open: 1970-01-01 07:00:00
+  market_close: 1970-01-01 05:00:00
+
+FUT.PL:
+  initial_margin: 3575
+  contract_size: 50
+  commission: 1.92
+  sessions:
+    - - 1970-01-01 7:00:00
+      - 1970-01-01 5:00:00
+  market_open: 1970-01-01 07:00:00
+  market_close: 1970-01-01 05:00:00
+
+FUT.PA:
+  initial_margin: 21450
+  contract_size: 100
+  commission: 1.92
+  sessions:
+    - - 1970-01-01 7:00:00
+      - 1970-01-01 5:00:00
+  market_open: 1970-01-01 07:00:00
+  market_close: 1970-01-01 05:00:00
+
+FUT.CO:
+  initial_margin: 12180
+  contract_size: 1000
+  commission: 1.92
+  sessions:
+    - - 1970-01-01 9:00:00
+      - 1970-01-01 5:00:00
+  market_open: 1970-01-01 09:00:00
+  market_close: 1970-01-01 05:00:00
+
+HK.HHImain:
+  initial_margin: 35590.40
+  contract_size: 50
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 09:15:00
+      - 1970-01-01 12:00:00
+    - - 1970-01-01 13:00:00
+      - 1970-01-01 16:30:00
+    - - 1970-01-01 17:15:00
+      - 1970-01-01 03:00:00
+  market_open: 1970-01-01 09:15:00
+  market_close: 1970-01-01 03:00:00
+
+HK.MHImain:
+  initial_margin: 19355.49
+  contract_size: 10
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 09:15:00
+      - 1970-01-01 12:00:00
+    - - 1970-01-01 13:00:00
+      - 1970-01-01 16:30:00
+    - - 1970-01-01 17:15:00
+      - 1970-01-01 03:00:00
+  market_open: 1970-01-01 09:15:00
+  market_close: 1970-01-01 03:00:00
+
+HK.TCHmain:
+  initial_margin: 5860.51
+  contract_size: 100
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 09:30:00
+      - 1970-01-01 12:00:00
+    - - 1970-01-01 13:00:00
+      - 1970-01-01 16:00:00
+  market_open: 1970-01-01 09:30:00
+  market_close: 1970-01-01 16:00:00
+
+HK.ALBmain:
+  initial_margin: 10771.40
+  contract_size: 500
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 09:30:00
+      - 1970-01-01 12:00:00
+    - - 1970-01-01 13:00:00
+      - 1970-01-01 16:00:00
+  market_open: 1970-01-01 09:30:00
+  market_close: 1970-01-01 16:00:00
+
+HK.MCAmain:
+  initial_margin: 50000
+  contract_size: 25
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 09:00:00
+      - 1970-01-01 16:30:00
+    - - 1970-01-01 17:15:00
+      - 1970-01-01 03:00:00
+  market_open: 1970-01-01 09:00:00
+  market_close: 1970-01-01 03:00:00
+
+HK.MTWmain:
+  initial_margin: 50000
+  contract_size: 100
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 09:00:00
+      - 1970-01-01 13:45:00
+    - - 1970-01-01 14:30:00
+      - 1970-01-01 03:00:00
+  market_open: 1970-01-01 09:00:00
+  market_close: 1970-01-01 03:00:00
+
+HK.HTImain:
+  initial_margin: 43000
+  contract_size: 50
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 09:15:00
+      - 1970-01-01 12:00:00
+    - - 1970-01-01 13:00:00
+      - 1970-01-01 16:30:00
+    - - 1970-01-01 17:15:00
+      - 1970-01-01 03:00:00
+  market_open: 1970-01-01 09:15:00
+  market_close: 1970-01-01 03:00:00
+
+HK.GDUmain:
+  initial_margin: 40000
+  contract_size: 1000
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 08:30:00
+      - 1970-01-01 16:30:00
+    - - 1970-01-01 17:15:00
+      - 1970-01-01 03:00:00
+  market_open: 1970-01-01 08:30:00
+  market_close: 1970-01-01 03:00:00
+
+HK.CUSmain:
+  initial_margin: 18000
+  contract_size: 100000
+  commission: 10.1
+  sessions:
+    - - 1970-01-01 08:30:00
+      - 1970-01-01 16:30:00
+    - - 1970-01-01 17:15:00
+      - 1970-01-01 03:00:00
+  market_open: 1970-01-01 08:30:00
+  market_close: 1970-01-01 03:00:00

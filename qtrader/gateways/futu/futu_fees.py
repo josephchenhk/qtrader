@@ -4,13 +4,24 @@
 # @Email   : josephchenhk@gmail.com
 # @FileName: futu_fees.py
 # @Software: PyCharm
+
+"""
+Copyright (C) 2020 Joseph Chen - All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the JXW license, which unfortunately won't be
+written for another century.
+
+You should have received a copy of the JXW license with
+this file. If not, please write to: josephchenhk@gmail.com
+"""
+
 import math
 
 from qtrader.core.deal import Deal
 from qtrader.gateways.base_gateway import BaseFees
 
 
-class FutuHKEquityFees(BaseFees):
+class FutuFeesSEHK(BaseFees):
     """
     港股融资融券（8332）套餐一（适合一般交易者）
     融资利率: 年利率6.8%
@@ -51,7 +62,7 @@ class FutuHKEquityFees(BaseFees):
     交易征费（香港证监会）: 0.0027*成交金额，最低0.01港元
     """
 
-    def __init__(self, *deals:Deal):
+    def __init__(self, *deals: Deal):
         for deal in deals:
             price = deal.filled_avg_price
             size = deal.filled_quantity
@@ -95,11 +106,55 @@ class FutuHKEquityFees(BaseFees):
 
         # 总费用
         self.total_fees = (
-            self.commissions +
-            self.platform_fees +
-            self.system_fees +
-            self.settlement_fees +
-            self.stamp_fees +
-            self.trade_fees +
-            self.transaction_fees
+            self.commissions
+            + self.platform_fees
+            + self.system_fees
+            + self.settlement_fees
+            + self.stamp_fees
+            + self.trade_fees
+            + self.transaction_fees
+        )
+
+
+class FutuFeesHKFE(BaseFees):
+    """
+    综合期货账户（6463）
+
+    佣金: 2港元/每张合约
+    平台使用费: 5港元/每张合约
+
+    交易系统使用费（香港交易所）: N/A
+    交收费（香港结算所）: N/A
+    印花税（香港政府）: N/A
+    交易费（香港交易所）: 3港元/每张合约
+    监管费（香港证监会）: 0.1元/每张合约
+    """
+
+    def __init__(self, *deals: Deal):
+        for deal in deals:
+            size = deal.filled_quantity
+            lot = deal.security.lot_size
+            num_of_contracts = int(size / lot)
+
+            # 交易费（Exchange Fee）
+            self.trade_fees += 3.0 * num_of_contracts
+
+            # 监管费
+            self.transaction_fees += 0.1 * num_of_contracts
+
+        # 佣金(Hong Kong Fixed Commissions)
+        self.commissions += 2.0 * num_of_contracts
+
+        # 平台使用费
+        self.platform_fees = 5.0 * num_of_contracts
+
+        # 总费用
+        self.total_fees = (
+            self.commissions
+            + self.platform_fees
+            + self.system_fees
+            + self.settlement_fees
+            + self.stamp_fees
+            + self.trade_fees
+            + self.transaction_fees
         )
