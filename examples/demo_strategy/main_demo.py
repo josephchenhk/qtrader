@@ -2,7 +2,7 @@
 # @Time    : 9/15/2021 4:45 PM
 # @Author  : Joseph Chen
 # @Email   : josephchenhk@gmail.com
-# @FileName: main_cta.py
+# @FileName: main_demo.py
 
 """
 Copyright (C) 2020 Joseph Chen - All Rights Reserved
@@ -26,7 +26,7 @@ from qtrader.core.security import Futures
 from qtrader.core.engine import Engine
 from qtrader.gateways.cqg import CQGFees
 
-from examples.demo_strategy import DemoStrategy
+from demo_strategy import DemoStrategy
 
 
 if __name__ == "__main__":
@@ -37,8 +37,8 @@ if __name__ == "__main__":
         from qtrader.gateways import BacktestGateway
         gateway_name = "Backtest"  # "Futufutures", "Backtest", "Cqg", "Ib"
         UseGateway = BacktestGateway
-        start = datetime(2021, 6, 1, 15, 0, 0)
-        end = datetime(2022, 5, 30, 23, 0, 0)
+        start = datetime(2021, 3, 15, 15, 0, 0)
+        end = datetime(2021, 3, 17, 23, 0, 0)
     elif trade_mode in (TradeMode.SIMULATE, TradeMode.LIVETRADE):
         from qtrader.gateways import CqgGateway
         gateway_name = "Cqg"

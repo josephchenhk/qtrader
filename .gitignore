@@ -145,6 +145,7 @@ cython_debug/
 log/*
 qtrader/log/*
 results/*
+examples/*/log/*
 
 # core
 qtrader/config/config.py

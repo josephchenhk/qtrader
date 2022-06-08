@@ -34,8 +34,6 @@ pyarrow
 pyfolio
 python-dateutil
 pytz
-qtrader @ git+https://github.com/josephchenhk/qtrader@3f68382f0f53c02b9e3d5e5488b7fd139e45a0e5
-quantkits
 requests
 requests-oauthlib
 scikit-learn
@@ -60,3 +58,6 @@ websocket-client
 Werkzeug
 xlrd
 XlsxWriter
+func-timeout
+PyYAML
+plotly
