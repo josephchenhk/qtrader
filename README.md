@@ -5,7 +5,7 @@
     <img src ="https://img.shields.io/badge/platform-windows|linux|macos-yellow.svg"/>
     <img src ="https://img.shields.io/badge/python-3.8|3.9|3.10-blue.svg" />
     <img src ="https://img.shields.io/github/workflow/status/vnpy/vnpy/Python%20application/master"/>
-    <img src ="https://img.shields.io/github/license/vnpy/vnpy.svg?color=orange"/>
+    <img src ="https://img.shields.io/badge/license-JXW-orange"/>
 </p>
 
 **Latest update on 06/01/2022**
