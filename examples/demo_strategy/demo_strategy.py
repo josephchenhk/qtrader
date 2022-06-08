@@ -18,6 +18,9 @@ from time import sleep
 from typing import Dict, List
 from random import random
 
+import pandas as pd
+from finta import TA
+
 from qtrader.core.constants import Direction, Offset, OrderType, TradeMode, OrderStatus
 from qtrader.core.data import Bar
 from qtrader.core.engine import Engine
@@ -31,13 +34,16 @@ class DemoStrategy(BaseStrategy):
             strategy_account:str,
             strategy_version:str,
             init_strategy_cash:Dict[str,float],
-            engine:Engine
+            engine:Engine,
+            **kwargs
         ):
         super().__init__(
-            engine=engine,
+            securities=securities,
             strategy_account=strategy_account,
             strategy_version=strategy_version,
+            engine=engine,
             init_strategy_cash=init_strategy_cash,
+            **kwargs
         )
         # security list
         self.securities = securities
@@ -52,7 +58,11 @@ class DemoStrategy(BaseStrategy):
                 self.sleep_time = 5
 
     def init_strategy(self):
-        pass
+        self.ohlcv = {}
+        for gateway_name in self.engine.gateways:
+            self.ohlcv[gateway_name] = {}
+            for security in self.engine.gateways[gateway_name].securities:
+                self.ohlcv[gateway_name][security] = []
 
     def on_bar(self, cur_data:Dict[str,Dict[Security, Bar]]):
 
@@ -89,18 +99,56 @@ class DemoStrategy(BaseStrategy):
                     continue
 
                 bar = cur_data[gateway_name][security]
-                orderbook = self.engine.get_orderbook(security=security, gateway_name=gateway_name )
-                quote = self.engine.get_quote(security=security, gateway_name=gateway_name )
-                self.engine.log.info(quote)
-                self.engine.log.info(orderbook)
+
+                # Collect bar data (only keep latest 20 records)
+                self.ohlcv[gateway_name][security].append(bar)
+                if len(self.ohlcv[gateway_name][security]) > 20:
+                    self.ohlcv[gateway_name][security].pop(0)
+
+                open_ts = [b.open for b in
+                               self.ohlcv[gateway_name][security]]
+                high_ts = [b.high for b in
+                               self.ohlcv[gateway_name][security]]
+                low_ts = [b.low for b in
+                              self.ohlcv[gateway_name][security]]
+                close_ts = [b.close for b in
+                                self.ohlcv[gateway_name][security]]
+
+                ohlc = pd.DataFrame({
+                    "open": open_ts,
+                    "high": high_ts,
+                    "low": low_ts,
+                    "close": close_ts
+                })
+                macd = TA.MACD(
+                    ohlc,
+                    period_fast=12,
+                    period_slow=26,
+                    signal=9)
+
+                if len(macd) < 2:
+                    continue
+
+                prev_macd = macd.iloc[-2]["MACD"]
+                prev_signal = macd.iloc[-2]["SIGNAL"]
+                cur_macd = macd.iloc[-1]["MACD"]
+                cur_signal = macd.iloc[-1]["SIGNAL"]
+                signal = None
+                if prev_macd > cur_signal > cur_macd > 0:
+                    signal = "SELL"
+                elif prev_macd < cur_signal < cur_macd < 0:
+                    signal = "BUY"
 
                 long_position = self.engine.get_position(security=security, direction=Direction.LONG,
                                                          gateway_name=gateway_name)
                 short_position = self.engine.get_position(security=security, direction=Direction.SHORT,
                                                          gateway_name=gateway_name)
 
-                # Randomly open long or short positions, and
-                if long_position:
+                if short_position and signal == "SELL":
+                    continue
+                elif long_position and signal == "BUY":
+                    continue
+                elif long_position and signal == "SELL":
                     order_instruct = dict(
                         security=security,
                         quantity=long_position.quantity,
@@ -109,7 +157,16 @@ class DemoStrategy(BaseStrategy):
                         order_type=OrderType.MARKET,
                         gateway_name=gateway_name,
                     )
-                elif short_position:
+                elif signal == "SELL":
+                    order_instruct = dict(
+                        security=security,
+                        quantity=1,
+                        direction=Direction.SHORT,
+                        offset=Offset.OPEN,
+                        order_type=OrderType.MARKET,
+                        gateway_name=gateway_name,
+                    )
+                elif short_position and signal == "BUY":
                     order_instruct = dict(
                         security=security,
                         quantity=short_position.quantity,
@@ -118,36 +175,38 @@ class DemoStrategy(BaseStrategy):
                         order_type=OrderType.MARKET,
                         gateway_name=gateway_name,
                     )
-                else:
-                    direction = Direction.LONG if random() > 0.5 else Direction.SHORT
+                elif signal == "BUY":
                     order_instruct = dict(
                         security=security,
                         quantity=1,
-                        direction=direction,
+                        direction=Direction.LONG,
                         offset=Offset.OPEN,
                         order_type=OrderType.MARKET,
                         gateway_name=gateway_name,
                     )
-                self.engine.log.info(f"提交订单:\n{order_instruct}")
+                else:
+                    continue
+
+                self.engine.log.info(f"Submit order: \n{order_instruct}")
                 orderid = self.engine.send_order(**order_instruct)
                 if orderid=="":
-                    self.engine.log.info("提交订单失败")
+                    self.engine.log.info("Fail to submit order")
                     return
 
                 sleep(self.sleep_time)
                 order = self.engine.get_order(orderid=orderid, gateway_name=gateway_name)
-                self.engine.log.info(f"订单{orderid}已发出:{order}")
+                self.engine.log.info(f"Order ({orderid}) has been sent: {order}")
 
                 deals = self.engine.find_deals_with_orderid(orderid, gateway_name=gateway_name)
                 for deal in deals:
                     self.portfolios[gateway_name].update(deal)
 
                 if order.status==OrderStatus.FILLED:
-                    self.engine.log.info(f"订单已成交{orderid}")
+                    self.engine.log.info(f"Order ({orderid}) has been filled.")
                 else:
                     err = self.engine.cancel_order(orderid=orderid, gateway_name=gateway_name)
                     if err:
-                        self.engine.log.info(f"不能取消订单{orderid},因爲{err}")
+                        self.engine.log.info(f"Can't cancel order ({orderid}). Error: {err}")
                     else:
-                        self.engine.log.info(f"已經取消订单{orderid}")
+                        self.engine.log.info(f"Successfully cancel order ({orderid}).")
 

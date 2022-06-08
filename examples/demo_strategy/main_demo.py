@@ -77,7 +77,7 @@ if __name__ == "__main__":
     plugins = engine.get_plugins()
 
     # Initialize strategy
-    strategy_account = "CTAStrategy"
+    strategy_account = "DemoStrategy"
     strategy_version = "1.0"
     strategy = DemoStrategy(
         securities={gateway_name: stock_list},
@@ -96,16 +96,11 @@ if __name__ == "__main__":
 
     # Event recorder
     recorder = BarEventEngineRecorder(datetime=[],
-                                      bar_datetime=[],
                                       open=[],
                                       high=[],
                                       low=[],
                                       close=[],
-                                      volume=[],
-                                      trend=[],
-                                      trend_up=[],
-                                      trend_down=[],
-                                      signal=[])
+                                      volume=[])
     event_engine = BarEventEngine(
         {"cta": strategy},
         {"cta": recorder},

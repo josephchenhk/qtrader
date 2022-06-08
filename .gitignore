@@ -146,6 +146,7 @@ log/*
 qtrader/log/*
 results/*
 examples/*/log/*
+examples/*/results/*
 
 # core
 qtrader/config/config.py
