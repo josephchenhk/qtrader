@@ -274,7 +274,7 @@ event_engine.run()
 In this way, your mobile phone with telegram will automatically receive a
 documenting message：
 
-<img src="./contents/telegram_bot.png" width=50%>
+<img src="./contents/telegram_bot.png" width=35%>
 
 You can use your mobile phone to monitor and control your strategy now.
 
