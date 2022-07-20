@@ -272,9 +272,9 @@ event_engine.run()
 ```
 
 In this way, your mobile phone with telegram will automatically receive a
-documenting message:
+documenting message：
 
-![alt text](./contents/telegram_bot.png "telegram bot")
+<img src="./contents/telegram_bot.png" width=50%>
 
 You can use your mobile phone to monitor and control your strategy now.
 
