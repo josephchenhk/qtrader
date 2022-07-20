@@ -8,18 +8,21 @@
     <img src ="https://img.shields.io/badge/license-JXW-orange"/>
 </p>
 
-**Latest update on 06/01/2022**
+**Latest update on 2022-07-20**
 
-QTrader is a light and flexible event-driven algorithmic trading engine that can be used to backtest strategies, 
-and seamlessly switch to live trading without any pain.
+QTrader is a light and flexible event-driven algorithmic trading engine that 
+can be used to backtest strategies, and seamlessly switch to live trading 
+without any pain.
 
-## Key features
+## Key Features
 
 * Completely **same code** for backtesting / simulation / live trading 
 
 * Support trading of various assets: equity, futures
 
-## Quick install
+* Resourceful functionalities to support live monitoring and analysis
+
+## Quick Install
 
 You may run the folllowing command to install QTrader immediately:
 
@@ -35,16 +38,18 @@ You may run the folllowing command to install QTrader immediately:
 >> pip install git+https://github.com/josephchenhk/qtrader@master
 ```
 
-## Get the data ready
+## Prepare the Data
 
-QTrader supports bar data at the moment. What you need to do is creating a folder with the name of the security you
-are interested in. Let's say you want to backtest or trade HK equity **"HK.01157"** in frequency of **1 minute**, your 
-data folder should be like this (where "K_1M" stands for 1 minute; you can also find a sample from 
-qtrader/examples/data):
+QTrader supports bar data at the moment. What you need to do is creating a 
+folder with the name of the security you are interested in. Let's say you want 
+to backtest or trade HK equity **"HK.01157"** in frequency of **1 minute**, your 
+data folder should be like this (where "K_1M" stands for 1 minute; you can also 
+find a sample from the qtrader/examples/data):
 
 ![alt text](./contents/data_folder.png "data folder")
 
-And you can prepare OHLCV data in CSV format, with dates as their file names, e.g., **"yyyy-mm-dd.csv"**: 
+And you can prepare OHLCV data in CSV format, with dates as their file names, 
+e.g., **"yyyy-mm-dd.csv"**: 
 
 ![alt text](./contents/data_folder_details.png "data folder details")
 
@@ -52,18 +57,19 @@ Inside each csv file, the data columns should look like this:
 
 ![alt text](./contents/bar_data_sample.png "bar data sample")
 
-Now you can specify the path of data folder in `qtrader/config/config.py`. For example, set
+Now you can specify the path of data folder in `qtrader/config/config.py`. For 
+example, set
 
 ```python
 DATA_PATH = {
-    "kline": "path_to_your_qtrader_folder/examples/data/k_line/K_1M",
+    "kline": "path_to_your_qtrader_folder/examples/data/k_line",
 }
 ```
 
-## How to implement a strategy
+## Implement a Strategy
 
-To implement a strategy is simple in QTrader. A strategy needs to implement `init_strategy` and `on_bar` methods in 
-`BaseStrategy`. Here is a quick sample:
+To implement a strategy is simple in QTrader. A strategy needs to implement 
+`init_strategy` and `on_bar` methods in `BaseStrategy`. Here is a quick sample:
 
 ```python
 from qtrader.core.strategy import BaseStrategy
@@ -78,13 +84,14 @@ class MyStrategy(BaseStrategy):
 ```
 
         
-## How to record anything I want
+## Record Variables
 
-QTrader provides a module named `BarEventEngineRecorder` to record variables during backtesting and/or trading. By 
-default, it saves `datetime`, `portfolio_value` and `action` at every time step. 
+QTrader provides a module named `BarEventEngineRecorder` to record variables 
+during backtesting and/or trading. By default it saves `datetime`, 
+`portfolio_value` and `action` at every time step. 
 
-If you want to record additional variables (let's say it is called `var`), you need to write a method called `get_var` 
-in your strategy:
+If you want to record additional variables (let's say it is called `var`), you 
+need to write a method called `get_var` in your strategy:
 
 ```python
 from qtrader.core.strategy import BaseStrategy
@@ -95,17 +102,19 @@ class MyStrategy(BaseStrategy):
         return var
 ```
 
-And initialize your `BarEventEngineRecorder` with the same vairable `var=[]`(if you want to record every timestep) or 
-`var=None`(if you want to record only the last updated value):
+And initialize your `BarEventEngineRecorder` with the same vairable `var=[]`(if 
+you want to record every timestep) or `var=None`(if you want to record only the 
+last updated value):
 
 ```python
 recorder = BarEventEngineRecorder(var=[])
 ```
     
 
-## Run a backtest
+## Run a Backtest
 
-Now we are ready to run a backtest. Here is a sample of running a backtest in QTrader:
+Now we are ready to run a backtest. Here is a sample of running a backtest in 
+QTrader:
 
 ```python
 # Security 
@@ -123,8 +132,6 @@ gateway = BacktestGateway(
 )
 gateway.SHORT_INTEREST_RATE = 0.0
 gateway.set_trade_mode(TradeMode.BACKTEST)
-gateway.TRADING_HOURS_AM = [Time(9, 30, 0), Time(12, 0, 0)]
-gateway.TRADING_HOURS_PM = [Time(13, 0, 0), Time(16, 0, 0)]
 
 # Core engine
 engine = Engine(gateways={gateway_name: gateway})
@@ -138,41 +145,56 @@ strategy = DemoStrategy(
     strategy_account=strategy_account,
     strategy_version=strategy_version,
     init_strategy_cash={gateway_name: init_capital},
-    engine=engine)
+    engine=engine,
+    strategy_trading_sessions={
+        "HK.01157": [
+            [datetime(1970, 1, 1, 9, 30, 0), datetime(1970, 1, 1, 12, 0, 0)],
+            [datetime(1970, 1, 1, 13, 0, 0), datetime(1970, 1, 1, 16, 0, 0)],
+        ],
+)
 strategy.init_strategy()
 
 # Recorder
 recorder = BarEventEngineRecorder()
 
 # Event engine
-event_engine = BarEventEngine(strategy, recorder)
+event_engine = BarEventEngine(
+    {"demo": strategy},
+    {"demo": recorder},
+    engine
+)
 
 # Start event engine
 event_engine.run()
 
 # Save results and shutdown program
 result_path = recorder.save_csv()
+
+# get activated plugins
 plugins = engine.get_plugins()
 if "analysis" in plugins:
     plot_pnl = plugins["analysis"].plot_pnl
-    plot_pnl(result_path=result_path)
+    plot_pnl(result_path=result_path, freq="daily")
 engine.log.info("Program shutdown normally.")
 ```
 
-After shutdown, you will be able to find the results in qtrader/results, with the folder name of latest time stamp:
+After shutdown, you will be able to find the results in qtrader/results, with 
+the folder name of latest time stamp:
 
 ![alt text](./contents/results.png "results")
 
-The result.csv file saves everything you want to record in `BarEventEngineRecorder`; while pnl.html is an interactive 
-plot of the equity curve of your running strategy:
+The result.csv file saves everything you want to record in 
+`BarEventEngineRecorder`; while pnl.html is an interactive plot of the equity 
+curve of your running strategy:
 
 ![alt text](./contents/pnl.png "pnl")
 
 ## Simulation / Live trading
 
-Ok, your strategy looks good now. How can you put it to paper trading and/or live trading? In QTrader it is
-extremely easy to switch from backtest mode to simulation or live trading mode. What you need to modify is just 
-**two** lines:
+Ok, your strategy looks good now. How can you put it to paper trading and/or 
+live trading? In QTrader it is extremely easy to switch from backtest mode to 
+simulation or live trading mode. What you need to modify is just 
+**two** lines (replace a backtest gateway with a live trading gateway!):
 
 ```python
 # Currently you can use "Futu", "Ib", and "Cqg" 
@@ -187,13 +209,74 @@ gateway = FutuGateway(
 )
 
 # Choose either TradeMode.SIMULATE or TradeMode.LIVETRADE
-gateway.set_trade_mode(TradeMode.SIMULATE)
+gateway.set_trade_mode(TradeMode.LIVETRADE)
 ```
 
 That's it! You switch from backtest to simulation / live trading mode now. 
 
-**Important Notice**: In the demo sample, the live trading mode will keep sending orders, please be aware 
-of the risk when running it.
+**Important Notice**: In the demo sample, the live trading mode will keep on
+sending orders, please be aware of the risk when running it.
+
+## Live Monitoring
+
+When running the strategies, the trader typically needs to monitor the market 
+and see whether the signals are triggered as expected. QTrader provides with
+such **dashboard**(visualization panel) which can dynamically update the market data and gives
+out entry and exit signals in line with the strategies. 
+
+You can config in `qtrader.plugins.monitor.livemonitor.py`, modify the 
+information as required:
+
+```python
+monitor_config = {
+    "demo": {
+        "instruments": {
+            "Livetrade": ["HK.01157", "HK.00700"]
+        },
+        "livemonitor_name": "20221231"
+    },
+}
+```
+
+After running the script `$ python qtrader.plugins.monitor.livemonitor.py`, you
+will be able to open a web-based monitor in the browser: `127.0.0.1:8050`:
+
+![alt text](./contents/live_monitor.png "live_monitor")
+
+QTrader is also equipped with a **Telegram Bot**, which allows you get instant
+information from your trading program. To enable this function, you can add your
+telegram information in `qtrader.config.config.py`(you can refer to the
+following [link](https://core.telegram.org/bots/api) for detailed guidance):
+
+```python
+ACTIVATED_PLUGINS = ["telegram"]
+
+TELEGRAM_TOKEN = "50XXXXXX16:AAGan6nFgmrSOx9vJipwmXXXXXXXXXXXM3E"
+TELEGRAM_CHAT_ID = 21XXXXXX49
+```
+
+and add the following lines before the event engine runs:
+
+```python
+event_engine = BarEventEngine(
+    {"demo": strategy},
+    {"demo": recorder},
+    engine
+)
+
+if "telegram" in plugins:
+    telegram_bot = plugins["telegram"].bot
+    telegram_bot.send_message(f"{datetime.now()} {telegram_bot.__doc__}")
+
+event_engine.run()
+```
+
+In this way, your mobile phone with telegram will automatically receive a
+documenting message:
+
+![alt text](./contents/telegram_bot.png "telegram bot")
+
+You can use your mobile phone to monitor and control your strategy now.
 
 ## Contributing
 * Fork it (https://github.com/josephchenhk/qtrader/fork)
