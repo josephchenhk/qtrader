@@ -14,10 +14,14 @@ You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
 
+import os
+import sys
+from pathlib import Path
+sys.path.append(str(Path(os.path.dirname(os.path.realpath(__file__))).parent.parent.parent))
+
 import ast
 import pickle
 from pathlib import Path
-import os
 
 import dash
 from dash.dependencies import Input, Output
@@ -32,16 +36,16 @@ from qtrader.core.utility import try_parsing_datetime
 monitor_config = {
     "cta": {
         "instruments": {
-            "Backtest": ["FUT.GC", "FUT.SI", "FUT.CO"]
+            "Backtest": ["HK.MHImain", "HK.HHImain"]
         },
-        "livemonitor_name": "20220401"
+        "livemonitor_name": "20220805"
     },
-    "semiauto": {
-        "instruments": {
-            "Backtest": ["FUT.CO"]
-        },
-        "livemonitor_name": "20220401"
-    }
+    # "semiauto": {
+    #     "instruments": {
+    #         "Backtest": ["FUT.CO"]
+    #     },
+    #     "livemonitor_name": "20220401"
+    # }
 }
 
 app = dash.Dash(__name__)
