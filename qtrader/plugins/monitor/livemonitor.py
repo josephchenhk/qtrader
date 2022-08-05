@@ -13,6 +13,8 @@ written for another century.
 You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
+import sys
+sys.path.append("qtrader")
 
 from qtrader.core.utility import try_parsing_datetime
 from qtrader.config import TIME_STEP
@@ -25,8 +27,6 @@ from pathlib import Path
 import pickle
 import ast
 import os
-import sys
-sys.path.append("qtrader")
 
 
 if len(sys.argv) > 2:
