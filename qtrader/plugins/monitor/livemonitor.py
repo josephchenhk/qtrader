@@ -14,39 +14,50 @@ You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
 
+from qtrader.core.utility import try_parsing_datetime
+from qtrader.config import TIME_STEP
+import pyautogui
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from dash.dependencies import Input, Output
+import dash
+from pathlib import Path
+import pickle
+import ast
 import os
 import sys
-from pathlib import Path
-sys.path.append(str(Path(os.path.dirname(os.path.realpath(__file__))).parent.parent.parent))
+sys.path.append("qtrader")
 
-import ast
-import pickle
-from pathlib import Path
 
-import dash
-from dash.dependencies import Input, Output
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-import pyautogui
-
-from qtrader.config import TIME_STEP
-from qtrader.core.utility import try_parsing_datetime
-
-# Update the information below accordingly
-monitor_config = {
-    "cta": {
-        "instruments": {
-            "Backtest": ["HK.MHImain", "HK.HHImain"]
+if len(sys.argv) > 2:
+    print(sys.argv[1])
+    print(sys.argv[2])
+    monitor_config = {}
+    livemonitor_name = sys.argv[1]
+    strategies = ast.literal_eval(sys.argv[2])
+    for strategy_name, securities in strategies.items():
+        monitor_config[strategy_name] = {
+            "livemonitor_name": livemonitor_name,
+            "instruments": {}
+        }
+        for gateway_name, security_codes in securities.items():
+            monitor_config[strategy_name]["instruments"][gateway_name] = security_codes
+else:
+    # Just give a sample of monitor config
+    monitor_config = {
+        "strategy1_name": {
+            "instruments": {
+                "Backtest": ["security.code1", "security.code2"]
+            },
+            "livemonitor_name": "20220701"
         },
-        "livemonitor_name": "20220805"
-    },
-    # "semiauto": {
-    #     "instruments": {
-    #         "Backtest": ["FUT.CO"]
-    #     },
-    #     "livemonitor_name": "20220401"
-    # }
-}
+        "strategy2_name": {
+            "instruments": {
+                "Backtest": ["security.code3"]
+            },
+            "livemonitor_name": "20220701"
+        }
+    }
 
 app = dash.Dash(__name__)
 app.layout = dash.html.Div(
@@ -75,7 +86,7 @@ def update_graph_live(n, strategy_name):
     livemonitor_name = monitor_config.get(
         strategy_name).get("livemonitor_name")
 
-    home_dir = Path(os.path.abspath(__file__)).parent.parent.parent.parent
+    home_dir = Path(os.getcwd())
     data_path = home_dir.joinpath(
         f".qtrader_cache/livemonitor/{strategy_name}/{livemonitor_name}")
     with open(data_path, "rb") as f:
