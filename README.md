@@ -224,21 +224,13 @@ and see whether the signals are triggered as expected. QTrader provides with
 such **dashboard**(visualization panel) which can dynamically update the market data and gives
 out entry and exit signals in line with the strategies. 
 
-You can config in `qtrader.plugins.monitor.livemonitor.py`, modify the 
-information as required:
+You can activate this function in your `config.py`:
 
 ```python
-monitor_config = {
-    "demo": {
-        "instruments": {
-            "Livetrade": ["HK.01157", "HK.00700"]
-        },
-        "livemonitor_name": "20221231"
-    },
-}
+ACTIVATED_PLUGINS = ["monitor"]
 ```
 
-After running the script `$ python qtrader.plugins.monitor.livemonitor.py`, you
+After running the main script, you
 will be able to open a web-based monitor in the browser: `127.0.0.1:8050`:
 
 ![alt text](./contents/live_monitor.png "live_monitor")
