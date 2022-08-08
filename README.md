@@ -167,14 +167,7 @@ event_engine = BarEventEngine(
 # Start event engine
 event_engine.run()
 
-# Save results and shutdown program
-result_path = recorder.save_csv()
-
-# get activated plugins
-plugins = engine.get_plugins()
-if "analysis" in plugins:
-    plot_pnl = plugins["analysis"].plot_pnl
-    plot_pnl(result_path=result_path, freq="daily")
+# Program terminates normally
 engine.log.info("Program shutdown normally.")
 ```
 
@@ -227,7 +220,7 @@ out entry and exit signals in line with the strategies.
 You can activate this function in your `config.py`:
 
 ```python
-ACTIVATED_PLUGINS = ["monitor"]
+ACTIVATED_PLUGINS = [.., "monitor"]
 ```
 
 After running the main script, you
@@ -241,26 +234,10 @@ telegram information in `qtrader.config.config.py`(you can refer to the
 following [link](https://core.telegram.org/bots/api) for detailed guidance):
 
 ```python
-ACTIVATED_PLUGINS = ["telegram"]
+ACTIVATED_PLUGINS = [.., "telegram"]
 
 TELEGRAM_TOKEN = "50XXXXXX16:AAGan6nFgmrSOx9vJipwmXXXXXXXXXXXM3E"
 TELEGRAM_CHAT_ID = 21XXXXXX49
-```
-
-and add the following lines before the event engine runs:
-
-```python
-event_engine = BarEventEngine(
-    {"demo": strategy},
-    {"demo": recorder},
-    engine
-)
-
-if "telegram" in plugins:
-    telegram_bot = plugins["telegram"].bot
-    telegram_bot.send_message(f"{datetime.now()} {telegram_bot.__doc__}")
-
-event_engine.run()
 ```
 
 In this way, your mobile phone with telegram will automatically receive a
