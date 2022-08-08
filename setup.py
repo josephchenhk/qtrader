@@ -19,13 +19,17 @@ this file. If not, please write to: josephchenhk@gmail.com
 # https://www.codenong.com/cs106808509/
 
 from setuptools import setup, find_packages
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='qtrader',
-    version='0.0.3',
-    keywords=('setup', 'qtrader'),
-    description='setup qtrader',
-    long_description='',
+    version='0.0.4',
+    keywords=('Quantitative Trading', 'Qtrader', 'Backtest'),
+    description='Qtrader: Event-Driven Algorithmic Trading Engine',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     license='JXW',
     install_requires=['sqlalchemy',
                       'pandas',

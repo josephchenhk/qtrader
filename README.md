@@ -46,16 +46,16 @@ to backtest or trade HK equity **"HK.01157"** in frequency of **1 minute**, your
 data folder should be like this (where "K_1M" stands for 1 minute; you can also 
 find a sample from the qtrader/examples/data):
 
-![alt text](./contents/data_folder.png "data folder")
+![alt text](https://raw.githubusercontent.com/josephchenhk/qtrader/master/contents/data_folder.png "data folder")
 
 And you can prepare OHLCV data in CSV format, with dates as their file names, 
 e.g., **"yyyy-mm-dd.csv"**: 
 
-![alt text](./contents/data_folder_details.png "data folder details")
+![alt text](https://raw.githubusercontent.com/josephchenhk/qtrader/master/contents/data_folder_details.png "data folder details")
 
 Inside each csv file, the data columns should look like this:
 
-![alt text](./contents/bar_data_sample.png "bar data sample")
+![alt text](https://raw.githubusercontent.com/josephchenhk/qtrader/master/contents/bar_data_sample.png "bar data sample")
 
 Now you can specify the path of data folder in `qtrader/config/config.py`. For 
 example, set
@@ -174,13 +174,13 @@ engine.log.info("Program shutdown normally.")
 After shutdown, you will be able to find the results in qtrader/results, with 
 the folder name of latest time stamp:
 
-![alt text](./contents/results.png "results")
+![alt text](https://raw.githubusercontent.com/josephchenhk/qtrader/master/contents/results.png "results")
 
 The result.csv file saves everything you want to record in 
 `BarEventEngineRecorder`; while pnl.html is an interactive plot of the equity 
 curve of your running strategy:
 
-![alt text](./contents/pnl.png "pnl")
+![alt text](https://raw.githubusercontent.com/josephchenhk/qtrader/master/contents/pnl.png "pnl")
 
 ## Simulation / Live trading
 
@@ -226,7 +226,7 @@ ACTIVATED_PLUGINS = [.., "monitor"]
 After running the main script, you
 will be able to open a web-based monitor in the browser: `127.0.0.1:8050`:
 
-![alt text](./contents/live_monitor.png "live_monitor")
+![alt text](https://raw.githubusercontent.com/josephchenhk/qtrader/master/contents/live_monitor.png "live_monitor")
 
 QTrader is also equipped with a **Telegram Bot**, which allows you get instant
 information from your trading program. To enable this function, you can add your
