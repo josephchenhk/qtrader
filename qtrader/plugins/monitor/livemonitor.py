@@ -353,7 +353,7 @@ def update_graph_live(n, strategy_name):
 
                 if len(trend_ts) > 0:
                     down_color = [
-                        'rgba(206,72,45, 1.0)' if t == "DOWN"
+                        'rgba(206,72,45, 1.0)' if t == -1.0
                         else 'rgba(206,72,45, 0.0)' for t in trend_ts]
                     trend_ups[gateway_name][security] = go.Scatter(
                         x=datetime_ts,
@@ -365,7 +365,7 @@ def update_graph_live(n, strategy_name):
                     )
 
                     up_color = [
-                        'rgba(60,179,113, 1.0)' if t == "UP"
+                        'rgba(60,179,113, 1.0)' if t == 1.0
                         else 'rgba(60,179,113, 0.0)' for t in trend_ts]
                     trend_downs[gateway_name][security] = go.Scatter(
                         x=datetime_ts,
