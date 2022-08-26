@@ -16,6 +16,7 @@ this file. If not, please write to: josephchenhk@gmail.com
 """
 
 import uuid
+import re
 from typing import Dict, List
 from datetime import datetime
 from datetime import timedelta
@@ -487,8 +488,14 @@ class FutuGateway(BaseGateway):
             print(f"[get_all_broker_positions] failed: {data}")
             return
         positions = []
+
+        # Handle HK contracts with specified month
+        p = re.compile("HK\.[A-Z]{3,5}[0-9]{4}")
         for idx, row in data.iterrows():
-            security = self.get_security(code=row["code"])
+            code = row["code"]
+            if p.match(row["code"]):
+                code = row["code"][:-4] + "main"
+            security = self.get_security(code=code)
             if security is None:
                 security = Security(
                     code=row["code"],

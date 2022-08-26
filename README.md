@@ -8,7 +8,7 @@
     <img src ="https://img.shields.io/badge/license-JXW-orange"/>
 </p>
 
-**Latest update on 2022-07-20**
+**Latest update on 2022-08-08**
 
 QTrader is a light and flexible event-driven algorithmic trading engine that 
 can be used to backtest strategies, and seamlessly switch to live trading 
@@ -31,7 +31,7 @@ You may run the folllowing command to install QTrader immediately:
 >> conda create -n qtrader python=3.8
 >> conda activate qtrader
 
-# Install stable version from pip (currently version 0.0.2)
+# Install stable version from pip (currently version 0.0.4)
 >> pip install qtrader
 
 # Alternatively, install latest version from github 
