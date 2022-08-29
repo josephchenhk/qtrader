@@ -508,7 +508,9 @@ def plot_pnl(
         start: datetime = None,
         end: datetime = None,
         freq: str = "1min",
-        title: str = "P&L"):
+        title: str = "P&L",
+        auto_open=False
+):
     """Plot portfolio equity curve, and specify maximum drawdown of the curve
 
     Ref: Start, End and Duration of Maximum Drawdown in Python
@@ -623,7 +625,9 @@ def plot_pnl(
 
     offline.plot(
         fig,
-        filename=f"{str(Path(result_path).parent)}/pnl_{title}.html")
+        filename=f"{str(Path(result_path).parent)}/pnl_{title}.html",
+        auto_open=auto_open
+    )
     print(f"Saved to {str(Path(result_path).parent)}/pnl_{title}.html")
 
 
