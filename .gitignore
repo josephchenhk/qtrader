@@ -149,9 +149,9 @@ examples/*/log/*
 examples/*/results/*
 
 # core
-qtrader/config/config.py
-qtrader/core/engine.py
-qtrader/core/event_engine.py
-qtrader/core/setup.py
+config.py
+engine.py
+event_engine.py
+setup.py
 
 
