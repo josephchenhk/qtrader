@@ -24,7 +24,7 @@ import pandas as pd
 import numpy as np
 
 try:
-    from qtrader.config import DB
+    from qtrader_config import DB
     db_path = DB["sqlite3"]
 except BaseException:
     raise ValueError(

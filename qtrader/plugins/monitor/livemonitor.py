@@ -17,7 +17,7 @@ import sys
 sys.path.append("qtrader")
 
 from qtrader.core.utility import try_parsing_datetime
-from qtrader.config import TIME_STEP
+from qtrader_config import TIME_STEP
 import pyautogui
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots

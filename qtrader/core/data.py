@@ -28,7 +28,7 @@ import pandas as pd
 from qtrader.core.constants import Exchange
 from qtrader.core.security import Stock, Security
 from qtrader.core.utility import get_kline_dfield_from_seconds
-from qtrader.config import DATA_PATH, TIME_STEP
+from qtrader_config import DATA_PATH, TIME_STEP
 
 
 @dataclass

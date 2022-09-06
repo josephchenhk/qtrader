@@ -24,7 +24,7 @@ from dateutil.relativedelta import relativedelta
 
 import pandas as pd
 
-from qtrader.config import DATA_PATH, DATA_MODEL, TIME_STEP
+from qtrader_config import DATA_PATH, DATA_MODEL, TIME_STEP
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction, OrderType
 from qtrader.core.data import Quote
@@ -47,7 +47,7 @@ from qtrader.gateways.base_gateway import BaseFees
 
 assert set(DATA_PATH.keys()) == set(DATA_MODEL.keys()), (
     "`DATA_PATH` and `DATA_MODEL` keys are not aligned! Please check "
-    "qtrader.config.config.py"
+    "qtrader_config.config.py"
 )
 
 

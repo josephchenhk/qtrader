@@ -17,7 +17,7 @@ this file. If not, please write to: josephchenhk@gmail.com
 
 from clickhouse_driver import Client
 
-from qtrader.config import CLICKHOUSE
+from qtrader_config import CLICKHOUSE
 
 client = Client(
     host=CLICKHOUSE["host"],

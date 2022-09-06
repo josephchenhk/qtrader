@@ -24,7 +24,7 @@ from qtrader.gateways.cqg.wrapper.cqg_api import CQGAPI
 from qtrader.gateways.cqg.wrapper.CELEnvironment import CELEnvironment
 from qtrader.gateways.base_gateway import BaseFees
 from qtrader.gateways import BaseGateway
-from qtrader.config import GATEWAYS, DATA_PATH, TIME_STEP
+from qtrader_config import GATEWAYS, DATA_PATH, TIME_STEP
 from qtrader.core.data import Bar, OrderBook, Quote, CapitalDistribution
 from qtrader.core.security import Stock, Security
 from qtrader.core.position import PositionData

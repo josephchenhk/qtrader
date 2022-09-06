@@ -24,8 +24,8 @@ from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
 from telegram.ext import Filters
 
-from qtrader.config import TELEGRAM_TOKEN
-from qtrader.config import TELEGRAM_CHAT_ID
+from qtrader_config import TELEGRAM_TOKEN
+from qtrader_config import TELEGRAM_CHAT_ID
 
 
 class CustomedExtBot(ExtBot):

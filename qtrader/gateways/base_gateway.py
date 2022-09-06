@@ -32,7 +32,7 @@ from qtrader.core.order import Order
 from qtrader.core.position import PositionData
 from qtrader.core.security import Security
 from qtrader.core.utility import BlockingDict
-from qtrader.config import GATEWAYS
+from qtrader_config import GATEWAYS
 
 
 class BaseGateway(ABC):

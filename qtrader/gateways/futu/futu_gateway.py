@@ -54,7 +54,7 @@ from qtrader.core.security import Stock, Security, Futures
 from qtrader.core.data import Bar, OrderBook, Quote, CapitalDistribution
 from qtrader.core.utility import try_parsing_datetime
 from qtrader.core.utility import get_kline_dfield_from_seconds
-from qtrader.config import GATEWAYS, DATA_PATH, TIME_STEP
+from qtrader_config import GATEWAYS, DATA_PATH, TIME_STEP
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
 
