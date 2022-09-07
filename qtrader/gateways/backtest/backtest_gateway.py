@@ -47,7 +47,7 @@ from qtrader.gateways.base_gateway import BaseFees
 
 assert set(DATA_PATH.keys()) == set(DATA_MODEL.keys()), (
     "`DATA_PATH` and `DATA_MODEL` keys are not aligned! Please check "
-    "qtrader_config.config.py"
+    "qtrader_config.py"
 )
 
 

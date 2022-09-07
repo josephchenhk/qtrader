@@ -2,7 +2,7 @@
 # @Time    : 7/3/2021 9:04 AM
 # @Author  : Joseph Chen
 # @Email   : josephchenhk@gmail.com
-# @FileName: config.py
+# @FileName: qtrader_config.py
 # @Software: PyCharm
 
 """
