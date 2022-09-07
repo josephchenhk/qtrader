@@ -8,8 +8,12 @@
     <img src ="https://img.shields.io/badge/license-JXW-orange"/>
 </p>
 
-**Latest update on 2022-08-08**
+**Latest update on 2022-09-07**
 
+## Key modifications
+- 2022-09-07: Moved `qtrader.config` to `qtrader_config`
+
+## Introduction
 QTrader is a light and flexible event-driven algorithmic trading engine that 
 can be used to backtest strategies, and seamlessly switch to live trading 
 without any pain.
@@ -38,6 +42,12 @@ You may run the folllowing command to install QTrader immediately:
 >> pip install git+https://github.com/josephchenhk/qtrader@master
 ```
 
+## Create a Configuration File
+
+At your current working directory, create `qtrader_config.py` if not exists.
+There is an example `qtrader_config_sample.py` for your reference. Adjust the
+items if necessary.
+
 ## Prepare the Data
 
 QTrader supports bar data at the moment. What you need to do is creating a 
@@ -57,8 +67,9 @@ Inside each csv file, the data columns should look like this:
 
 ![alt text](https://raw.githubusercontent.com/josephchenhk/qtrader/master/contents/bar_data_sample.png "bar data sample")
 
-Now you can specify the path of data folder in `qtrader/config/config.py`. For 
-example, set
+Now you can specify the path of data folder in 
+<del>`qtrader/config/config.py`</del>
+`qtrader_config.py`. For example, set
 
 ```python
 DATA_PATH = {
@@ -217,7 +228,7 @@ and see whether the signals are triggered as expected. QTrader provides with
 such **dashboard**(visualization panel) which can dynamically update the market data and gives
 out entry and exit signals in line with the strategies. 
 
-You can activate this function in your `config.py`:
+You can activate this function in your `qtrader_config.py`:
 
 ```python
 ACTIVATED_PLUGINS = [.., "monitor"]
@@ -230,7 +241,7 @@ will be able to open a web-based monitor in the browser: `127.0.0.1:8050`:
 
 QTrader is also equipped with a **Telegram Bot**, which allows you get instant
 information from your trading program. To enable this function, you can add your
-telegram information in `qtrader.config.config.py`(you can refer to the
+telegram information in `qtrader_config.py`(you can refer to the
 following [link](https://core.telegram.org/bots/api) for detailed guidance):
 
 ```python

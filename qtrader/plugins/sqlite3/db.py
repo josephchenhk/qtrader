@@ -29,7 +29,7 @@ try:
 except BaseException:
     raise ValueError(
         "`sqlite3` is activated, and its path must be specified in "
-        "`DB` variable in config.py")
+        "`DB` variable in qtrader_config.py")
 
 lock = threading.Lock()
 

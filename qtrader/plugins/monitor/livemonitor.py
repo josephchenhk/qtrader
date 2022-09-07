@@ -14,10 +14,10 @@ You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
 import sys
-sys.path.append("qtrader")
+import os
+from pathlib import Path
+sys.path.insert(0, str(Path(os.getcwd()).joinpath("qtrader")))
 
-from qtrader.core.utility import try_parsing_datetime
-from qtrader_config import TIME_STEP
 import pyautogui
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -26,7 +26,9 @@ import dash
 from pathlib import Path
 import pickle
 import ast
-import os
+
+from qtrader.core.utility import try_parsing_datetime
+from qtrader_config import TIME_STEP
 
 
 if len(sys.argv) > 2:
