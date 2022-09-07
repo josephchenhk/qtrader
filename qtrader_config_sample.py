@@ -50,7 +50,7 @@ GATEWAYS = {
 TIME_STEP = 60000  # time step in milliseconds
 
 DATA_PATH = {
-    "kline": "C:/Users/josephchenj/data/k_line",
+    "kline": "C:/Users/josephchen/data/k_line",
 }
 
 DATA_MODEL = {
@@ -61,11 +61,16 @@ DB = {
     "sqlite3": "/Users/qtrader/data"
 }
 
-ACTIVATED_PLUGINS = ["analysis"]
-
 CLICKHOUSE = {
     "host": "localhost",
     "port": 9000,
     "user": "default",
     "password": ""
 }
+
+AUTO_OPEN_PLOT = True
+IGNORE_TIMESTEP_OVERFLOW = False
+TELEGRAM_TOKEN = ""
+TELEGRAM_CHAT_ID = 1
+
+ACTIVATED_PLUGINS = ["analysis"]
