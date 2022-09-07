@@ -239,7 +239,8 @@ def _get_data(
             raise ValueError(
                 f"{time_col} data {data.iloc[0][time_col]} can not convert to "
                 "datetime")
-        full_data = full_data.append(data, ignore_index=True)
+        # full_data = full_data.append(data, ignore_index=True)
+        full_data = pd.concat([full_data, data])
     if full_data.empty:
         raise ValueError(
             f"There is no historical data for {security.code} within time range"
