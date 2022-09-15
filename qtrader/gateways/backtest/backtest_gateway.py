@@ -24,7 +24,7 @@ from dateutil.relativedelta import relativedelta
 
 import pandas as pd
 
-from qtrader_config import DATA_PATH, DATA_MODEL, TIME_STEP, DATA_FFILL
+from qtrader_config import DATA_PATH, DATA_MODEL, TIME_STEP
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction, OrderType
 from qtrader.core.data import Quote
@@ -146,28 +146,28 @@ class BacktestGateway(BaseGateway):
             )
         self.fees = fees
 
-        if DATA_FFILL:
-            first_time_key = None
-            time_keys = set()
-            for security in securities:
-                for dfield in DATA_PATH.keys():  # kline | capdist
-                    # Read data and get its time_keys
-                    data = _get_data(
-                        security=security,
-                        start=start,
-                        end=end,
-                        dfield=dfield,
-                        dtype=dtypes[dfield])
-                    if first_time_key is None:
-                        first_time_key = data.iloc[0]["time_key"]
-                    else:
-                        first_time_key = max(
-                            first_time_key,
-                            data.iloc[0]["time_key"]
-                        )
-                    time_keys.update(data.time_key.to_list())
-            time_keys = sorted(time_keys)
-            time_keys = [t for t in time_keys if t >= first_time_key]
+        # if DATA_FFILL:
+        #     first_time_key = None
+        #     time_keys = set()
+        #     for security in securities:
+        #         for dfield in DATA_PATH.keys():  # kline | capdist
+        #             # Read data and get its time_keys
+        #             data = _get_data(
+        #                 security=security,
+        #                 start=start,
+        #                 end=end,
+        #                 dfield=dfield,
+        #                 dtype=dtypes[dfield])
+        #             if first_time_key is None:
+        #                 first_time_key = data.iloc[0]["time_key"]
+        #             else:
+        #                 first_time_key = max(
+        #                     first_time_key,
+        #                     data.iloc[0]["time_key"]
+        #                 )
+        #             time_keys.update(data.time_key.to_list())
+        #     time_keys = sorted(time_keys)
+        #     time_keys = [t for t in time_keys if t >= first_time_key]
 
         data_iterators = dict()
         prev_cache = dict()
@@ -185,17 +185,17 @@ class BacktestGateway(BaseGateway):
                     end=end,
                     dfield=dfield,
                     dtype=dtypes[dfield])
-                if DATA_FFILL:
-                    data = data[data.time_key >= first_time_key]
-                    ffill_data = pd.DataFrame(index=time_keys)
-                    ffill_data = ffill_data.join(data.set_index('time_key')).sort_index()
-                    ffill_data = ffill_data.reset_index().rename(columns={"index": "time_key"})
-                    ffill_data['open'] = ffill_data['open'].ffill()
-                    ffill_data['high'] = ffill_data['high'].ffill()
-                    ffill_data['low'] = ffill_data['low'].ffill()
-                    ffill_data['close'] = ffill_data['close'].ffill()
-                    ffill_data['volume'] = ffill_data['volume'].fillna(0)
-                    data = ffill_data
+                # if DATA_FFILL:
+                #     data = data[data.time_key >= first_time_key]
+                #     ffill_data = pd.DataFrame(index=time_keys)
+                #     ffill_data = ffill_data.join(data.set_index('time_key')).sort_index()
+                #     ffill_data = ffill_data.reset_index().rename(columns={"index": "time_key"})
+                #     ffill_data['open'] = ffill_data['open'].ffill()
+                #     ffill_data['high'] = ffill_data['high'].ffill()
+                #     ffill_data['low'] = ffill_data['low'].ffill()
+                #     ffill_data['close'] = ffill_data['close'].ffill()
+                #     ffill_data['volume'] = ffill_data['volume'].fillna(0)
+                #     data = ffill_data
                 data_it = _get_data_iterator(
                     security=security,
                     full_data=data,
@@ -535,7 +535,7 @@ def _req_historical_min_bars(
     for n, hist_csv_file in enumerate(hist_csv_files):
         df = pd.read_csv(f"{data_path}/{hist_csv_file}")
         df["time_key"] = pd.to_datetime(df["time_key"])
-        df = df[df.time_key < cur_datetime] if n == 0 else df
+        df = df[df.time_key < cur_datetime] # if n == 0 else df
         for _, row in df.iloc[::-1].iterrows():
             bar_datetime = row.time_key.to_pydatetime()
             if (
@@ -588,7 +588,7 @@ def _req_historical_min_bars(
                             volume=row.volume
                         )
                         bars.append(ffill_bar)
-                    time_delta -= 1
+                    time_delta -= interval_value
 
             bars.append(bar)
             if len(bars) >= periods:
