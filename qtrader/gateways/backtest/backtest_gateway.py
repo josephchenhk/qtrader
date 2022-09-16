@@ -535,7 +535,7 @@ def _req_historical_min_bars(
     for n, hist_csv_file in enumerate(hist_csv_files):
         df = pd.read_csv(f"{data_path}/{hist_csv_file}")
         df["time_key"] = pd.to_datetime(df["time_key"])
-        df = df[df.time_key < cur_datetime] # if n == 0 else df
+        df = df[df.time_key <= cur_datetime] # if n == 0 else df
         for _, row in df.iloc[::-1].iterrows():
             bar_datetime = row.time_key.to_pydatetime()
             if (
@@ -565,10 +565,38 @@ def _req_historical_min_bars(
             )
 
             # fill with previous bar if current bar is not available
-            if bars:
+            if len(bars) == 0:
+                cur_dt = datetime(
+                    year=cur_datetime.year,
+                    month=cur_datetime.month,
+                    day=cur_datetime.day,
+                    hour=cur_datetime.hour,
+                    minute=cur_datetime.minute,
+                    second=cur_datetime.second
+                )
+                while cur_dt > bar_datetime:
+                    ffill_bar_datetime = cur_dt
+                    _is_trading_time = is_trading_time(
+                        cur_time=ffill_bar_datetime.time(),
+                        trading_sessions=trading_sessions
+                    )
+                    if _is_trading_time:
+                        ffill_bar = Bar(
+                            security=security,
+                            datetime=ffill_bar_datetime,
+                            open=row.open,
+                            high=row.high,
+                            low=row.low,
+                            close=row.close,
+                            volume=row.volume
+                        )
+                        bars.append(ffill_bar)
+                    cur_dt -= timedelta(minutes=interval_value)
+            else:
                 time_delta = int(
                     (bars[-1].datetime - bar_datetime).seconds / 60)
                 while time_delta > interval_value:
+                    ffill_bar_datetime = cur_dt
                     ffill_bar_datetime = (
                         bars[-1].datetime
                         - timedelta(minutes=interval_value)
@@ -580,7 +608,7 @@ def _req_historical_min_bars(
                     if _is_trading_time:
                         ffill_bar = Bar(
                             security=security,
-                            datetime=bars[-1].datetime - timedelta(minutes=interval_value),
+                            datetime=ffill_bar_datetime,
                             open=row.open,
                             high=row.high,
                             low=row.low,
