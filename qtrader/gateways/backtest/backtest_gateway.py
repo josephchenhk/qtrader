@@ -383,7 +383,10 @@ class BacktestGateway(BaseGateway):
             order.filled_avg_price = order.price
         elif order.order_type == OrderType.MARKET:
             bar = self.get_recent_data(order.security, order.create_time)
-            order.filled_avg_price = bar.close
+            if bar is not None:
+                order.filled_avg_price = bar.close
+            if order.filled_avg_price is None:
+                raise ValueError("filled_avg_price is NOT available!")
         order.status = OrderStatus.FILLED
         orderid = "bt-order-" + str(uuid.uuid4())
         dealid = "bt-deal-" + str(uuid.uuid4())
@@ -594,7 +597,7 @@ def _req_historical_min_bars(
                     cur_dt -= timedelta(minutes=interval_value)
             else:
                 time_delta = int(
-                    (bars[-1].datetime - bar_datetime).seconds / 60)
+                    (bars[-1].datetime - bar_datetime).total_seconds() / 60)
                 while time_delta > interval_value:
                     ffill_bar_datetime = cur_dt
                     ffill_bar_datetime = (
