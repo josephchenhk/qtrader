@@ -533,7 +533,8 @@ def _req_historical_min_bars(
         daily_close_time = trading_sessions[-1][1].time()
 
     interval_value = int(interval.replace("min", ""))
-    hist_csv_files = _load_historical_bars_in_reverse(security, cur_datetime)
+    hist_csv_files = _load_historical_bars_in_reverse(
+        security, cur_datetime, interval)
     bars = []
     for n, hist_csv_file in enumerate(hist_csv_files):
         df = pd.read_csv(f"{data_path}/{hist_csv_file}")
