@@ -79,7 +79,9 @@ class PerformanceCTA:
         df_d = df1.set_index('datetime').resample('D').agg(agg_dict)
         df_d = df_d.dropna()
         # returns = df_d['strategy_portfolio_value'].pct_change()
-        returns = df_d['strategy_portfolio_value'].diff() / df_d['strategy_portfolio_value'].iloc[0]
+        returns = (
+            df_d['strategy_portfolio_value'].diff()
+            / df_d['strategy_portfolio_value'].iloc[0]).dropna()
 
         df_d["benchmark"] = 0
         for i, gateway_name in enumerate(self.instruments["security"]):
@@ -90,7 +92,8 @@ class PerformanceCTA:
                     *self.instruments["lot"][gateway_name][j]
                 )
         # benchmark_returns = df_d["benchmark"].pct_change()
-        benchmark_returns = df_d["benchmark"].diff() / df_d["benchmark"].iloc[0]
+        benchmark_returns = (
+            df_d["benchmark"].diff() / df_d["benchmark"].iloc[0]).dropna()
 
         sr = sharpe_ratio(returns, 252)
         ir = information_ratio(returns, benchmark_returns, 252)
