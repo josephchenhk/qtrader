@@ -50,7 +50,7 @@ def percentile(n: float):
     return percentile_
 
 
-def sharp_ratio(returns: np.array, days: int = 252) -> float:
+def sharpe_ratio(returns: np.array, days: int = 252) -> float:
     volatility = returns.std()
     sharpe_ratio = np.sqrt(days) * returns.mean() / volatility
     return sharpe_ratio
