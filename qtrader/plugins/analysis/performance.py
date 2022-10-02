@@ -31,7 +31,7 @@ from qtrader.core.utility import try_parsing_datetime
 from qtrader.plugins.analysis.metrics import percentile
 from qtrader.plugins.analysis.metrics import convert_time
 from qtrader.plugins.analysis.metrics import holding_period
-from qtrader.plugins.analysis.metrics import sharp_ratio
+from qtrader.plugins.analysis.metrics import sharpe_ratio
 from qtrader.plugins.analysis.metrics import information_ratio
 from qtrader.plugins.analysis.metrics import modigliani_ratio
 from qtrader.plugins.analysis.metrics import rolling_maximum_drawdown
@@ -59,7 +59,7 @@ class PerformanceCTA:
         result = Path(
             os.getcwd()).parent.parent.parent.joinpath(
             self.result_path)
-        df = pd.read_csv(result)
+        df = pd.read_csv(str(result).replace("%20", " "))
 
         df.datetime = [try_parsing_datetime(
             max(ast.literal_eval(dt))) for dt in df["datetime"]]
@@ -78,7 +78,8 @@ class PerformanceCTA:
 
         df_d = df1.set_index('datetime').resample('D').agg(agg_dict)
         df_d = df_d.dropna()
-        returns = df_d['strategy_portfolio_value'].pct_change()
+        # returns = df_d['strategy_portfolio_value'].pct_change()
+        returns = df_d['strategy_portfolio_value'].diff() / df_d['strategy_portfolio_value'].iloc[0]
 
         df_d["benchmark"] = 0
         for i, gateway_name in enumerate(self.instruments["security"]):
@@ -88,9 +89,10 @@ class PerformanceCTA:
                     df_d[f"{gateway_name}_{security}_close"]
                     *self.instruments["lot"][gateway_name][j]
                 )
-        benchmark_returns = df_d["benchmark"].pct_change()
+        # benchmark_returns = df_d["benchmark"].pct_change()
+        benchmark_returns = df_d["benchmark"].diff() / df_d["benchmark"].iloc[0]
 
-        sr = sharp_ratio(returns, 252)
+        sr = sharpe_ratio(returns, 252)
         ir = information_ratio(returns, benchmark_returns, 252)
         m2_ratio = modigliani_ratio(returns, benchmark_returns, 252)
         df_mdd = rolling_maximum_drawdown(df_d['strategy_portfolio_value'])
