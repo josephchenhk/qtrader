@@ -21,14 +21,14 @@ from .backtest import BacktestGateway
 try:
     from .futu import FutuGateway, FutuFuturesGateway
 except ImportError as e:
-    print(f"{e.__class__}: {e.msg}")
+    print(f"Warning: {e.__class__}: {e.msg}")
 
 try:
     from .ib import IbGateway
 except ImportError as e:
-    print(f"{e.__class__}: {e.msg}")
+    print(f"Warning: {e.__class__}: {e.msg}")
 
 try:
     from .cqg import CqgGateway
 except ImportError as e:
-    print(f"{e.__class__}: {e.msg}")
+    print(f"Warning: {e.__class__}: {e.msg}")
