@@ -52,6 +52,8 @@ def percentile(n: float):
 
 def sharpe_ratio(returns: np.array, days: int = 252) -> float:
     volatility = returns.std()
+    if volatility == 0:
+        return np.nan
     sharpe_ratio = np.sqrt(days) * returns.mean() / volatility
     return sharpe_ratio
 
@@ -63,12 +65,16 @@ def information_ratio(
 ) -> float:
     return_difference = returns - benchmark_returns
     volatility = return_difference.std()
+    if volatility == 0:
+        return np.nan
     information_ratio = np.sqrt(days) * return_difference.mean() / volatility
     return information_ratio
 
 
 def modigliani_ratio(returns: np.array, benchmark_returns, days=252) -> float:
     volatility = returns.std()
+    if volatility == 0:
+        return np.nan
     sharpe_ratio = np.sqrt(days) * returns.mean() / volatility
     benchmark_volatility = benchmark_returns.std()
     m2_ratio = sharpe_ratio * benchmark_volatility
