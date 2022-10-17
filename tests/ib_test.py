@@ -13,6 +13,15 @@ written for another century.
 You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
+import sys
+import os
+from pathlib import Path
+SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+sys.modules.pop("qtrader", None)
+sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtalib")))
+sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtrader")))
+
+
 from datetime import datetime, timedelta
 from datetime import time as Time
 
@@ -31,8 +40,8 @@ class TestIbGateway:
 
     def setup_class(self):
         stock_list = [
-            Currency(code="EUR.USD", lot_size=1000, security_name="EUR.USD", exchange=Exchange.IDEALPRO),
-            # Futures(code="FUT.GC", lot_size=100, security_name="GCG2", exchange=Exchange.NYMEX, expiry_date="20220224"),
+            # Currency(code="EUR.USD", lot_size=1000, security_name="EUR.USD", exchange=Exchange.IDEALPRO),
+            Futures(code="FUT.GC", lot_size=100, security_name="GCZ2", exchange=Exchange.NYMEX, expiry_date="20221228"),
             # Futures(code="FUT.ZUC", lot_size=100, security_name="ZUCF22", exchange=Exchange.SGX, expiry_date="20220131"),
         ]
         gateway_name = "Ib"
