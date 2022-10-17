@@ -385,7 +385,13 @@ class BacktestGateway(BaseGateway):
             bar = self.get_recent_data(order.security, order.create_time)
             if bar is not None:
                 order.filled_avg_price = bar.close
-            if order.filled_avg_price is None:
+            elif self.prev_cache[order.security]['kline'] is not None:
+                order.filled_avg_price = self.prev_cache[order.security][
+                    'kline'].close
+            elif self.next_cache[order.security]['kline'] is not None:
+                order.filled_avg_price = self.next_cache[order.security][
+                    'kline'].close
+            if order.filled_avg_price is None or order.filled_avg_price == 0:
                 raise ValueError("filled_avg_price is NOT available!")
         order.status = OrderStatus.FILLED
         orderid = "bt-order-" + str(uuid.uuid4())
