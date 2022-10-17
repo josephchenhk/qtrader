@@ -91,8 +91,8 @@ DB = {
 
 ACTIVATED_PLUGINS = ["analysis"]#, "sqlite3"]  # "telegram", "sqlite3", "monitor"
 
-TELEGRAM_TOKEN = "5014225426:AAGan6nFgmrSOx9vJipwmXRbP3rkQkxYM3E"
-TELEGRAM_CHAT_ID = 2127860249
+TELEGRAM_TOKEN = "XXX"
+TELEGRAM_CHAT_ID = 123
 IGNORE_TIMESTEP_OVERFLOW = True  # default False
 DATA_FFILL = True
 AUTO_OPEN_PLOT = False
