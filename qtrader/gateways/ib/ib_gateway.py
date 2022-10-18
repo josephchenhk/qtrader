@@ -838,7 +838,7 @@ class IbGateway(BaseGateway):
                     security,
                     bar_interval,
                     get_default_bar_num_from_bar_interval(bar_interval),
-                    False
+                    True
                 )
                 # Blocking here to wait for the bars request done
                 bars_done_reqId = self.ib_bars_done[bar_interval][security].get(
