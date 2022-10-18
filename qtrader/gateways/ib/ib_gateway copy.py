@@ -45,6 +45,7 @@ from qtrader_config import GATEWAYS, DATA_PATH, TIME_STEP
 from qtrader.gateways import BaseGateway
 from qtrader.gateways.base_gateway import BaseFees
 
+NUM_BARS = 10
 """
 IMPORTANT
 ---------
@@ -109,12 +110,13 @@ class IbAPI(IbWrapper, IbClient):
 
     def historicalData(self, reqId: int, bar: BarData):
         # print("HistoricalData. ReqId:", reqId, "BarData.", bar)
+        bar_interval_num = self.gateway.get_bar_interval_from_ib_bars_reqid(reqId)
         security = self.gateway.get_security_from_ib_bars_reqid(reqId)
         if ":" in bar.date:
-            bar_interval = "1min"
+            bar_interval = f"{bar_interval_num}min"
             bar_time = datetime.strptime(bar.date, "%Y%m%d  %H:%M:%S")
         else:
-            bar_interval = "1day"
+            bar_interval = f"{bar_interval_num}day"
             bar_time = datetime.strptime(bar.date, "%Y%m%d")
         qt_bar = Bar(
             datetime=bar_time,
@@ -136,21 +138,21 @@ class IbAPI(IbWrapper, IbClient):
         security = self.gateway.get_security_from_ib_bars_reqid(reqId)
         bar_num_diff = len(self.gateway.ib_bars[bar_interval][security]) - \
             self.gateway.ib_bars_num[bar_interval][security]
-        if bar_interval == "1min":
+        if "min" in bar_interval:
             if not (bar_num_diff == 0 or bar_num_diff == 1):
                 raise ValueError(
                     "Received "
-                    f"{len(self.gateway.ib_bars[bar_interval][security])} 1min "
-                    "bars, expect to get "
+                    f"{len(self.gateway.ib_bars[bar_interval][security])} "
+                    f"{bar_interval} bars, expect to get "
                     f"{self.gateway.ib_bars_num[bar_interval][security]} (last "
                     f"1min bar should be updating). Check {security.code} and "
                     f"{bar_interval}")
-        elif bar_interval == "1day":
+        elif "day" in bar_interval:
             if not (bar_num_diff == 0 or bar_num_diff == 1):
                 raise ValueError(
                     "Received "
-                    f"{len(self.gateway.ib_bars[bar_interval][security])} 1day "
-                    "bars, expect to get "
+                    f"{len(self.gateway.ib_bars[bar_interval][security])} "
+                    f"{bar_interval} bars, expect to get "
                     f"{self.gateway.ib_bars_num[bar_interval][security]}. "
                     f"Check {security.code} and {bar_interval}")
         # Notify threads that are waiting for ib_bars_done
@@ -161,7 +163,7 @@ class IbAPI(IbWrapper, IbClient):
         # print("HistoricalDataUpdate. ReqId:", reqId, "BarData.", bar)
         security = self.gateway.get_security_from_ib_bars_reqid(reqId)
         if ":" in bar.date:
-            bar_interval = "1min"
+            bar_interval = f"{self.gateway.time_step_in_mins}min"
             bar_time = datetime.strptime(bar.date, "%Y%m%d  %H:%M:%S")
         else:
             bar_interval = "1day"
@@ -598,7 +600,8 @@ class IbGateway(BaseGateway):
         # to be consumed in get_recent_bar
         self.ib_consolidated_1m_bar = {s: None for s in securities}
 
-        bar_req = ["1min", "1day"]
+        self.time_step_in_mins = round(TIME_STEP / (60. * 1000))
+        bar_req = [f"{self.time_step_in_mins}min", "1day"]
         self.ib_bars_done = {f: {s: DefaultQueue(
             maxsize=1) for s in self.securities} for f in bar_req}
         self.ib_bars = {f: {s: list() for s in self.securities}
@@ -641,12 +644,19 @@ class IbGateway(BaseGateway):
                     reqId=self.ib_5s_bars_reqid[security])
             if self.ib_quotes_reqid[security]:
                 self.api.cancelMktData(reqId=self.ib_quotes_reqid[security])
-            if self.ib_bars_reqid["1min"][security]:
-                self.api.cancelHistoricalData(
-                    reqId=self.ib_bars_reqid["1min"][security])
-            if self.ib_bars_reqid["1day"][security]:
-                self.api.cancelHistoricalData(
-                    reqId=self.ib_bars_reqid["1day"][security])
+
+            for bar_interval in self.ib_bars_reqid:
+                if self.ib_bars_reqid[bar_interval][security]:
+                    self.api.cancelHistoricalData(
+                        reqId=self.ib_bars_reqid[bar_interval][security])
+
+            # if self.ib_bars_reqid["1min"][security]:
+            #     self.api.cancelHistoricalData(
+            #         reqId=self.ib_bars_reqid["1min"][security])
+            # if self.ib_bars_reqid["1day"][security]:
+            #     self.api.cancelHistoricalData(
+            #         reqId=self.ib_bars_reqid["1day"][security])
+
         # Disconnect API
         self.api.disconnect()
 
@@ -748,36 +758,36 @@ class IbGateway(BaseGateway):
             update: bool = False
     ) -> int:
         queryTime = "" if update else datetime.now().strftime("%Y%m%d %H:%M:%S")
-        if bar_interval == "1min":
+        if "min" in bar_interval:
             durationStr = f"{bar_num * 60} S"
             self.api.reqId += 1
-            self.ib_bars_reqid["1min"][security] = self.api.reqId
-            self.ib_bars_num["1min"][security] = bar_num
+            self.ib_bars_reqid[bar_interval][security] = self.api.reqId
+            self.ib_bars_num[bar_interval][security] = bar_num
             # request historical data
             self.api.reqHistoricalData(
                 reqId=self.api.reqId,
                 contract=ib_contract,
                 endDateTime=queryTime,
                 durationStr=durationStr,
-                barSizeSetting="1 min",
+                barSizeSetting=f"{bar_interval.replace('min', '')} min",
                 whatToShow=get_what_to_show(security),
                 useRTH=0,
                 formatDate=1,
                 keepUpToDate=update,  # if True, endDateTime can not be specified
                 chartOptions=[])
             return self.api.reqId
-        elif bar_interval == "1day":
+        elif "day" in bar_interval:
             durationStr = f"{bar_num} D"
             self.api.reqId += 1
-            self.ib_bars_reqid["1day"][security] = self.api.reqId
-            self.ib_bars_num["1day"][security] = bar_num
+            self.ib_bars_reqid[bar_interval][security] = self.api.reqId
+            self.ib_bars_num[bar_interval][security] = bar_num
             # request historical data
             self.api.reqHistoricalData(
                 reqId=self.api.reqId,
                 contract=ib_contract,
                 endDateTime=queryTime,
                 durationStr=durationStr,
-                barSizeSetting="1 day",
+                barSizeSetting=f"{bar_interval.replace('day', '')} day",
                 whatToShow=get_what_to_show(security),
                 useRTH=0,
                 formatDate=1,
@@ -786,7 +796,7 @@ class IbGateway(BaseGateway):
             return self.api.reqId
         else:
             raise ValueError(
-                "bar_interval can only be '1min' or '1day', but "
+                "bar_interval can only be '{int}min' or '{int}day', but "
                 f"'{bar_interval}' was passed in.")
 
     def subscribe(self):
@@ -829,26 +839,25 @@ class IbGateway(BaseGateway):
                 self.ib_quotes_reqid[security] = self.api.reqId
                 self.api.reqMktData(
                     self.api.reqId, ib_contract, "", False, False, [])
-                print(f"Subscribed market data of {security.code}")
+                print(f"Subscribed market data (quote and orderbook) of {security}")
 
-                # request hist bar data
-                bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
-                reqId = self.req_bar(
-                    ib_contract,
-                    security,
-                    bar_interval,
-                    get_default_bar_num_from_bar_interval(bar_interval),
-                    False
-                )
-                # Blocking here to wait for the bars request done
-                bars_done_reqId = self.ib_bars_done[bar_interval][security].get(
-                    timeout=30)
-                if bars_done_reqId is None:
-                    raise TimeoutError("Failed to get bars within the time limit.")
-                if bars_done_reqId != reqId:
-                    raise ValueError("reqId do not match: "
-                       f"{bars_done_reqId} != {reqId}")
-                print(f"Subscribed bar data of {security.code}")
+                # # request bar data
+                # bar_interval = f"{self.time_step_in_mins}min"
+                # reqId = self.req_bar(
+                #     ib_contract,
+                #     security,
+                #     bar_interval,
+                #     NUM_BARS,
+                #     False
+                # )
+                # # Blocking here to wait for the bars request done
+                # bars_done_reqId = self.ib_bars_done[bar_interval][security].get(
+                #     timeout=30)
+                # if bars_done_reqId is None:
+                #     raise TimeoutError("Failed to get bars within the time limit.")
+                # if bars_done_reqId != reqId:
+                #     raise ValueError(f'reqId mismatch: {bars_done_reqId} != {reqId}')
+                # print(f"Subscribed bar data of {security}")
 
             else:
                 raise ValueError(
@@ -864,42 +873,42 @@ class IbGateway(BaseGateway):
     ) -> List[Bar]:
         """Get recent historical OHLCV"""
 
-        num_bars = self.ib_bars_num[bar_interval][security]
-        recent_bars = self.ib_bars[bar_interval][security][:num_bars]
-        return recent_bars
+        # num_bars = self.ib_bars_num[bar_interval][security]
+        # recent_bars = self.ib_bars[bar_interval][security][:num_bars]
+        # return recent_bars
 
-        # reqId = self.ib_bars_reqid[bar_interval][security]
-        # if reqId is None:
-        #     ib_contract = self.get_ib_contract_from_security(security)
-        #     reqId = self.req_bar(
-        #         ib_contract,
-        #         security,
-        #         bar_interval,
-        #         get_default_bar_num_from_bar_interval(bar_interval),
-        #         False
-        #     )
-        # # Blocking here to wait for the bars request done
-        # bars_done_reqId = self.ib_bars_done[bar_interval][security].get(
-        #     timeout=30)
-        # if bars_done_reqId is None:
-        #     raise TimeoutError("Failed to get bars within the time limit.")
-        # if bars_done_reqId == reqId:
-        #     num_bars = self.ib_bars_num[bar_interval][security]
-        #     recent_bars = self.ib_bars[bar_interval][security][:num_bars]
-        #
-        #     # Cancel request immediately
-        #     # Unlike get_recent_bar, this function (get_recent_bars) will send
-        #     # request to IB each time. So every time we have received the data,
-        #     # we must reset all related params, so that next time we can make
-        #     # a clean request
-        #     self.api.cancelHistoricalData(reqId=reqId)
-        #     self.ib_bars_reqid[bar_interval][security] = None
-        #     self.ib_bars_num[bar_interval][security] = None
-        #
-        #     # return the requested data
-        #     return recent_bars
-        # else:
-        #     raise ValueError(f"reqId mismatch: {bars_done_reqId} != {reqId}")
+        reqId = self.ib_bars_reqid[bar_interval][security]
+        if reqId is None:
+            ib_contract = self.get_ib_contract_from_security(security)
+            reqId = self.req_bar(
+                ib_contract,
+                security,
+                bar_interval,
+                NUM_BARS,
+                False
+            )
+        # Blocking here to wait for the bars request done
+        bars_done_reqId = self.ib_bars_done[bar_interval][security].get(
+            timeout=30)
+        if bars_done_reqId is None:
+            raise TimeoutError("Failed to get bars within the time limit.")
+        if bars_done_reqId == reqId:
+            num_bars = self.ib_bars_num[bar_interval][security]
+            recent_bars = self.ib_bars[bar_interval][security][:num_bars]
+
+            # Cancel request immediately
+            # Unlike get_recent_bar, this function (get_recent_bars) will send
+            # request to IB each time. So every time we have received the data,
+            # we must reset all related params, so that next time we can make
+            # a clean request
+            self.api.cancelHistoricalData(reqId=reqId)
+            self.ib_bars_reqid[bar_interval][security] = None
+            self.ib_bars_num[bar_interval][security] = None
+
+            # return the requested data
+            return recent_bars
+        else:
+            raise ValueError(f"reqId mismatch: {bars_done_reqId} != {reqId}")
 
     def get_recent_bar(
             self,
@@ -917,47 +926,50 @@ class IbGateway(BaseGateway):
         #
         # Below is the code that initially intend for receiving realtime 1min bar
         # via reqHistoricalData:
-        #
-        # bars = self.get_recent_bars(security, bar_interval)
-        # assert self.ib_bars_done[bar_interval][security].get() == self.ib_bars_reqid[bar_interval][security],(
-        #     "reqId does not match in ib bars!")
-        # return bars[-2]  # the last bar might still be updating
 
-        reqId = self.ib_5s_bars_reqid[security]
-        if reqId is None:
-            # request 5sec bar data (to be aggregated to 1min bars)
-            # no more than 60 *new* requests for real time bars can be made in
-            # 10 minutes
-            # Ref:
-            # https://interactivebrokers.github.io/tws-api/realtime_bars.html
-            ib_contract = self.get_ib_contract_from_security(security)
-            self.api.reqId += 1
-            self.ib_5s_bars_reqid[security] = self.api.reqId
-            self.api.reqRealTimeBars(
-                self.api.reqId,
-                ib_contract,
-                5,
-                get_what_to_show(security),
-                False,
-                []
-            )
-            reqId = self.api.reqId
-        # Blocking here, until 1 min bar is available by aggregating all 5s bars
-        # If 1min bar is not available after 120 seconds, raise error
-        print("Aggregating 5sec bars to make 1min bar ...")
-        consolidated_bars_done_reqId = self.ib_consolidated_bars_done[security].get(
-            timeout=120)
-        if consolidated_bars_done_reqId is None:
-            raise TimeoutError(
-                "Failed to get consolidated bars within the time limit.")
-        if consolidated_bars_done_reqId == reqId:
-            consolidated_bar = self.ib_consolidated_1m_bar[security]
-            # bar has been consumed, reset to None
-            self.ib_consolidated_1m_bar[security] = None
-            return consolidated_bar
-        else:
-            raise ValueError(
-                f"reqId mismatch: {consolidated_bars_done_reqId} != {reqId}")
+        bar_interval = f"{self.time_step_in_mins}min"
+        bars = self.get_recent_bars(security, bar_interval)
+        assert (
+            self.ib_bars_done[bar_interval][security].get()
+            == self.ib_bars_reqid[bar_interval][security]), (
+            "reqId does not match in ib bars!")
+        return bars[-1]
+
+        # reqId = self.ib_5s_bars_reqid[security]
+        # if reqId is None:
+        #     # request 5sec bar data (to be aggregated to 1min bars)
+        #     # no more than 60 *new* requests for real time bars can be made in
+        #     # 10 minutes
+        #     # Ref:
+        #     # https://interactivebrokers.github.io/tws-api/realtime_bars.html
+        #     ib_contract = self.get_ib_contract_from_security(security)
+        #     self.api.reqId += 1
+        #     self.ib_5s_bars_reqid[security] = self.api.reqId
+        #     self.api.reqRealTimeBars(
+        #         self.api.reqId,
+        #         ib_contract,
+        #         5,
+        #         get_what_to_show(security),
+        #         False,
+        #         []
+        #     )
+        #     reqId = self.api.reqId
+        # # Blocking here, until 1 min bar is available by aggregating all 5s bars
+        # # If 1min bar is not available after 120 seconds, raise error
+        # print("Aggregating 5sec bars to make 1min bar ...")
+        # consolidated_bars_done_reqId = self.ib_consolidated_bars_done[security].get(
+        #     timeout=120)
+        # if consolidated_bars_done_reqId is None:
+        #     raise TimeoutError(
+        #         "Failed to get consolidated bars within the time limit.")
+        # if consolidated_bars_done_reqId == reqId:
+        #     consolidated_bar = self.ib_consolidated_1m_bar[security]
+        #     # bar has been consumed, reset to None
+        #     self.ib_consolidated_1m_bar[security] = None
+        #     return consolidated_bar
+        # else:
+        #     raise ValueError(
+        #         f"reqId mismatch: {consolidated_bars_done_reqId} != {reqId}")
 
     def get_recent_capital_distribution(
             self,
@@ -1145,14 +1157,14 @@ class IbGateway(BaseGateway):
                 f"mandatory if freq={freq}.")
 
         # return historical bar data
-        if freq == "1Min":
-            return _req_historical_bars_ib_1min(
+        if "Min" in freq:
+            return _req_historical_bars_ib_min(
                 security=security,
                 periods=periods,
                 gateway=self
             )
-        elif freq == "1Day":
-            return _req_historical_bars_ib_1day(
+        elif "Day" in freq:
+            return _req_historical_bars_ib_day(
                 security=security,
                 periods=periods,
                 gateway=self
@@ -1165,7 +1177,7 @@ class IbGateway(BaseGateway):
             "are allowed.")
 
 
-def _req_historical_bars_ib_1min(
+def _req_historical_bars_ib_min(
     security: Security,
     periods: int,
     gateway: BaseGateway
@@ -1183,7 +1195,7 @@ def _req_historical_bars_ib_1min(
     return gateway.get_recent_bars(security, "1min")
 
 
-def _req_historical_bars_ib_1day(
+def _req_historical_bars_ib_day(
     security: Security,
     periods: int,
     gateway: BaseGateway,
@@ -1322,14 +1334,14 @@ def get_what_to_show(security: Security) -> str:
     return what_to_show
 
 
-def get_default_bar_num_from_bar_interval(bar_interval: str) -> int:
-    if bar_interval == "1min":
-        bar_num = 60 * 8
-    elif bar_interval == "1day":
-        bar_num = 60
-    else:
-        raise ValueError(f"bar_interval = {bar_interval} is not supported!")
-    return bar_num
+# def get_default_bar_num_from_bar_interval(bar_interval: str) -> int:
+#     if bar_interval == "1min":
+#         bar_num = 60 * 8
+#     elif bar_interval == "1day":
+#         bar_num = 60
+#     else:
+#         raise ValueError(f"bar_interval = {bar_interval} is not supported!")
+#     return bar_num
 
 
 def validate_bar_interval(bars: List[Bar], bar_interval: int):
