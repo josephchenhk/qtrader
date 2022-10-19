@@ -16,6 +16,7 @@ this file. If not, please write to: josephchenhk@gmail.com
 """
 
 import pickle
+import time
 from dataclasses import replace
 from datetime import datetime
 from typing import Dict, List, Any
@@ -84,7 +85,6 @@ class IbAPI(IbWrapper, IbClient):
         self.disconnect()
 
     def contractDetails(self, reqId: int, contractDetails: ContractDetails):
-        # super().contractDetails(reqId, contractDetails)
         contract = contractDetails.contract
         # Attached contracts to IB gateway
         for security in self.gateway.securities:
@@ -100,21 +100,17 @@ class IbAPI(IbWrapper, IbClient):
                 break
 
     def contractDetailsEnd(self, reqId: int):
-        # super().contractDetailsEnd(reqId)
-        # print("ContractDetailsEnd. ReqId:", reqId)
         security = self.gateway.get_security_from_ib_contractdetails_reqid(
             reqId)
         # Notify threads that are waiting for ib_contractdetails_done
         self.gateway.ib_contractdetails_done[security].put(reqId)
 
     def historicalData(self, reqId: int, bar: BarData):
-        # print("HistoricalData. ReqId:", reqId, "BarData.", bar)
-        security = self.gateway.get_security_from_ib_bars_reqid(reqId)
+        bar_interval = self.gateway.get_bar_interval_from_ib_hist_bars_reqid(reqId)
+        security = self.gateway.get_security_from_ib_hist_bars_reqid(reqId)
         if ":" in bar.date:
-            bar_interval = "1min"
             bar_time = datetime.strptime(bar.date, "%Y%m%d  %H:%M:%S")
         else:
-            bar_interval = "1day"
             bar_time = datetime.strptime(bar.date, "%Y%m%d")
         qt_bar = Bar(
             datetime=bar_time,
@@ -124,72 +120,29 @@ class IbAPI(IbWrapper, IbClient):
             low=bar.low,
             close=bar.close,
             volume=bar.volume)
-        self.gateway.ib_bars[bar_interval][security].append(qt_bar)
+        self.gateway.ib_hist_bars[bar_interval][security].append(qt_bar)
+
+        # Notify threads that are waiting for ib_hist_bars_done
+        num_bars = len(self.gateway.ib_hist_bars[bar_interval][security])
+        if (
+                num_bars == self.gateway.ib_hist_bars_num[bar_interval][security]
+                and self.gateway.ib_hist_bars_done[bar_interval][security].qsize() == 0
+        ):
+            self.gateway.ib_hist_bars_done[bar_interval][security].put(reqId)
+
 
     def historicalDataEnd(self, reqId: int, start: str, end: str):
         """The last bar is usually not completed, and shall be updated in
         historicalDataUpdate. Therefore we should abandon the last bar and only
         extract self.gateway.ib_bars[:-1]"""
-        # super().historicalDataEnd(reqId, start, end)
-        # print("HistoricalDataEnd. ReqId:", reqId, "from", start, "to", end)
-        bar_interval = self.gateway.get_bar_interval_from_ib_bars_reqid(reqId)
-        security = self.gateway.get_security_from_ib_bars_reqid(reqId)
-        bar_num_diff = len(self.gateway.ib_bars[bar_interval][security]) - \
-            self.gateway.ib_bars_num[bar_interval][security]
-        if bar_interval == "1min":
-            if not (bar_num_diff == 0 or bar_num_diff == 1):
-                raise ValueError(
-                    "Received "
-                    f"{len(self.gateway.ib_bars[bar_interval][security])} 1min "
-                    "bars, expect to get "
-                    f"{self.gateway.ib_bars_num[bar_interval][security]} (last "
-                    f"1min bar should be updating). Check {security.code} and "
-                    f"{bar_interval}")
-        elif bar_interval == "1day":
-            if not (bar_num_diff == 0 or bar_num_diff == 1):
-                raise ValueError(
-                    "Received "
-                    f"{len(self.gateway.ib_bars[bar_interval][security])} 1day "
-                    "bars, expect to get "
-                    f"{self.gateway.ib_bars_num[bar_interval][security]}. "
-                    f"Check {security.code} and {bar_interval}")
-        # Notify threads that are waiting for ib_bars_done
-        if self.gateway.ib_bars_done[bar_interval][security].qsize() == 0:
-            self.gateway.ib_bars_done[bar_interval][security].put(reqId)
+        bar_interval = self.gateway.get_bar_interval_from_ib_hist_bars_reqid(reqId)
+        security = self.gateway.get_security_from_ib_hist_bars_reqid(reqId)
+        # Notify threads that are waiting for ib_hist_bars_done
+        if self.gateway.ib_hist_bars_done[bar_interval][security].qsize() == 0:
+            self.gateway.ib_hist_bars_done[bar_interval][security].put(reqId)
 
     def historicalDataUpdate(self, reqId: int, bar: BarData):
-        # print("HistoricalDataUpdate. ReqId:", reqId, "BarData.", bar)
-        security = self.gateway.get_security_from_ib_bars_reqid(reqId)
-        if ":" in bar.date:
-            bar_interval = "1min"
-            bar_time = datetime.strptime(bar.date, "%Y%m%d  %H:%M:%S")
-        else:
-            bar_interval = "1day"
-            bar_time = datetime.strptime(bar.date, "%Y%m%d")
-        update_bar = Bar(
-            datetime=bar_time,
-            security=security,
-            open=bar.open,
-            high=bar.high,
-            low=bar.low,
-            close=bar.close,
-            volume=bar.volume)
-        last_bar = self.gateway.ib_bars[bar_interval][security][-1]
-        bar_reqId = self.gateway.ib_bars_done[bar_interval][security].get()
-        assert bar_reqId == reqId, (
-            f"reqId does not match! bar_reqId = {bar_reqId}, but reqId = "
-            f"{reqId}."
-        )
-        if update_bar.datetime == last_bar.datetime:
-            self.gateway.ib_bars[bar_interval][security][-1] = update_bar
-        elif update_bar.datetime > last_bar.datetime:
-            self.gateway.ib_bars[bar_interval][security].append(update_bar)
-            self.gateway.ib_bars[bar_interval][security].pop(0)
-            # Notify threads that are waiting for ib_bars_done
-            if self.gateway.ib_bars_done[bar_interval][security].qsize() == 0:
-                self.gateway.ib_bars_done[bar_interval][security].put(reqId)
-        else:
-            raise ValueError("Update bar datetime is earlier than last bar!")
+        pass
 
     def realtimeBar(
             self,
@@ -203,9 +156,10 @@ class IbAPI(IbWrapper, IbClient):
             wap: float,
             count: int
     ):
-        # super().realtimeBar(reqId, time, open_, high, low, close, volume, wap, count)
-        # print("RealTimeBar. TickerId:", reqId, time, open_, high, low, close, volume, wap, count)
-        security = self.gateway.get_security_from_ib_5s_bars_reqid(reqId)
+        bar_interval = self.gateway.get_bar_interval_from_ib_bars_reqid(reqId)
+        if "min" not in bar_interval:
+            raise ValueError(f"bar_interval={bar_interval} is NOT valid!")
+        security = self.gateway.get_security_from_ib_bars_reqid(reqId)
         bar_time = datetime.fromtimestamp(time)
         bar = Bar(
             datetime=bar_time,
@@ -215,27 +169,29 @@ class IbAPI(IbWrapper, IbClient):
             low=low,
             close=close,
             volume=volume)
+        # print(bar)
+        self.gateway.ib_bars["5sec"][security].append(bar)
+        self.gateway.ib_bars_num["5sec"][security] += 1
+        if self.gateway.ib_bars_req_done[bar_interval][security].qsize() == 0:
+            self.gateway.ib_bars_req_done[bar_interval][security].put(reqId)
 
+        bar_interval_mins = int(bar_interval.replace("min", ""))
+        num_5s_bars = bar_interval_mins * 12
         if (
-            security in self.gateway.ib_5s_bars
-            and len(self.gateway.ib_5s_bars[security]) == self.gateway.ib_5s_bars_max_no
+                bar_time.second == 0
+                and bar_time.minute % bar_interval_mins == 0
+                # and self.gateway.ib_bars_num["5sec"][security] >= num_5s_bars
         ):
-            self.gateway.ib_5s_bars[security].pop(0)
-        self.gateway.ib_5s_bars[security].append(bar)
-        assert len(self.gateway.ib_5s_bars[security]) <= self.gateway.ib_5s_bars_max_no, (
-            f"Error: There can not be more than "
-            f"{self.gateway.ib_5s_bars_max_no} bars!")
+            bars = self.gateway.ib_bars["5sec"][security][-num_5s_bars:]
 
-        # Notify threads that are waiting for ib_consolidated_bars_done
-        if (
-            len(self.gateway.ib_5s_bars[security]) == self.gateway.ib_5s_bars_max_no
-            and self.gateway.ib_5s_bars[security][-1].datetime.second == 0
-            and self.gateway.ib_consolidated_bars_done[security].qsize() == 0
-        ):
-            bars = self.gateway.ib_5s_bars[security][:]
-            assert validate_bar_interval(bars, 1), (
-                f"Failed to validate 5s bars:\n{bars}"
-            )
+            # We give up rigorous check for the bars, as we think an updated
+            # bar with less accuracy (for example, a 1min consolidated bar
+            # aggreaged from only 10, instead of 12, 5-seconds bars) is
+            # more important than legacy/outdated bars.
+            # assert validate_bar_interval(bars, 1), (
+            #     f"Failed to validate 5s bars:\n{bars}"
+            # )
+
             consolidated_bar = Bar(
                 datetime=get_time_key(bars),
                 security=security,
@@ -244,13 +200,12 @@ class IbAPI(IbWrapper, IbClient):
                 low=get_low(bars),
                 close=get_close(bars),
                 volume=get_volume(bars))
-            self.gateway.ib_consolidated_1m_bar[security] = consolidated_bar
-            self.gateway.ib_consolidated_bars_done[security].put(reqId)
-        elif (
-            self.gateway.ib_consolidated_1m_bar[security] is None
-            and self.gateway.ib_consolidated_bars_done[security].qsize() == 1
-        ):
-            self.gateway.ib_consolidated_bars_done[security].get()
+            self.gateway.ib_bars[bar_interval][security].append(consolidated_bar)
+            if self.gateway.ib_bars_done[bar_interval][security].qsize() == 0:
+                self.gateway.ib_bars_done[bar_interval][security].put(reqId)
+            self.gateway.ib_bars["5sec"][security] = []
+            self.gateway.ib_bars_num["5sec"][security] = 0
+
 
     def tickPrice(
             self,
@@ -259,12 +214,6 @@ class IbAPI(IbWrapper, IbClient):
             price: float,
             attrib: TickAttrib
     ):
-        # super().tickPrice(reqId, tickType, price, attrib)
-        # print("TickPrice. TickerId:", reqId, "tickType:", tickType,
-        #     "Price:", price, "CanAutoExecute:", attrib.canAutoExecute,
-        #     "PastLimit:", attrib.pastLimit, end = ' '
-        # )
-
         # process quote
         security = self.gateway.get_security_from_ib_quotes_reqid(reqId)
         if self.gateway.ib_quotes[security] is None:
@@ -283,9 +232,8 @@ class IbAPI(IbWrapper, IbClient):
         self.gateway.ib_quotes[security] = quote
         if quote.last_price != 0 or (
                 quote.bid_price != 0 and quote.ask_price != 0):
-            if self.gateway.ib_quotes_done[security].qsize() == 1:
-                self.gateway.ib_quotes_done[security].get()
-            self.gateway.ib_quotes_done[security].put(reqId)
+            if self.gateway.ib_quotes_done[security].qsize() == 0:
+                self.gateway.ib_quotes_done[security].put(reqId)
             self.gateway.process_quote(quote)
 
         # process orderbook
@@ -307,15 +255,11 @@ class IbAPI(IbWrapper, IbClient):
             and orderbook.bid_volume_1 != 0
             and orderbook.ask_volume_1 != 0
         ):
-            if self.gateway.ib_orderbooks_done[security].qsize() == 1:
-                self.gateway.ib_orderbooks_done[security].get()
-            self.gateway.ib_orderbooks_done[security].put(reqId)
+            if self.gateway.ib_orderbooks_done[security].qsize() == 0:
+                self.gateway.ib_orderbooks_done[security].put(reqId)
             self.gateway.process_orderbook(orderbook)
 
     def tickSize(self, reqId: TickerId, tickType: TickType, size: int):
-        # super().tickSize(reqId, tickType, size)
-        # print("TickSize. TickerId:", reqId, "TickType:", tickType, "Size:", size)
-
         # process orderbook
         security = self.gateway.get_security_from_ib_quotes_reqid(reqId)
         if self.gateway.ib_orderbooks[security] is None:
@@ -339,24 +283,17 @@ class IbAPI(IbWrapper, IbClient):
             and orderbook.bid_volume_1 != 0
             and orderbook.ask_volume_1 != 0
         ):
-            if self.gateway.ib_orderbooks_done[security].qsize() == 1:
-                self.gateway.ib_orderbooks_done[security].get()
-            self.gateway.ib_orderbooks_done[security].put(reqId)
+            if self.gateway.ib_orderbooks_done[security].qsize() == 0:
+                self.gateway.ib_orderbooks_done[security].put(reqId)
             self.gateway.process_orderbook(orderbook)
 
     def tickString(self, reqId: TickerId, tickType: TickType, value: str):
-        # super().tickString(reqId, tickType, value)
-        # print("TickString. TickerId:", reqId, "Type:", tickType, "Value:", value)
         pass
 
     def tickGeneric(self, reqId: TickerId, tickType: TickType, value: float):
-        # super().tickGeneric(reqId, tickType, value)
-        # print("TickGeneric. TickerId:", reqId, "TickType:", tickType, "Value:", value)
         pass
 
     def managedAccounts(self, accountsList: str):
-        # super().managedAccounts(accountsList)
-        # print("Account list:", accountsList)
         pass
 
     def updateAccountValue(
@@ -366,8 +303,6 @@ class IbAPI(IbWrapper, IbClient):
             currency: str,
             accountName: str
     ):
-        # super().updateAccountValue(key, val, currency, accountName)
-        # print("UpdateAccountValue. Key:", key, "Value:", val, "Currency:", currency, "AccountName:", accountName)
         if accountName != IB["broker_account"]:
             return
         account = self.gateway.balance
@@ -397,14 +332,6 @@ class IbAPI(IbWrapper, IbClient):
             realizedPNL: float,
             accountName: str
     ):
-        # super().updatePortfolio(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName)
-        # print("UpdatePortfolio.", "Symbol:", contract.symbol, "SecType:", contract.secType,
-        #       "Exchange:", contract.exchange, "Position:", position, "MarketPrice:", marketPrice,
-        #       "MarketValue:", marketValue, "AverageCost:", averageCost,
-        #       "UnrealizedPNL:", unrealizedPNL, "RealizedPNL:", realizedPNL,
-        #       "AccountName:", accountName
-        # )
-
         # Only update those securities listed in gateway initialization
         security = self.gateway.get_security_from_ib_contract(contract)
         if security is None:
@@ -419,14 +346,9 @@ class IbAPI(IbWrapper, IbClient):
             self.gateway.positions.append(position_data)
 
     def updateAccountTime(self, timeStamp: str):
-        # super().updateAccountTime(timeStamp)
-        # print("UpdateAccountTime. Time:", timeStamp)
         pass
 
     def accountDownloadEnd(self, accountName: str):
-        # super().accountDownloadEnd(accountName)
-        # print("AccountDownloadEnd. Account:", accountName)
-        # Update finished, insert into blocking dict
         if hasattr(self.gateway, "balance"):
             self.gateway.ib_accounts.put(
                 IB["broker_account"], self.gateway.balance)
@@ -442,29 +364,20 @@ class IbAPI(IbWrapper, IbClient):
             value: str,
             currency: str
     ):
-        # super().accountSummary(reqId, account, tag, value, currency)
-        # print("AccountSummary. ReqId:", reqId, "Account:", account, "Tag: ", tag, "Value:", value, "Currency:", currency)
         pass
 
     def accountSummaryEnd(self, reqId: int):
-        # super().accountSummaryEnd(reqId)
-        # print("AccountSummaryEnd. ReqId:", reqId)
         pass
 
     def error(self, reqId: TickerId, errorCode: int, errorString: str):
         """Ref: https://interactivebrokers.github.io/tws-api/message_codes.html#system_codes"""
-        # super().error(reqId, errorCode, errorString)
-        # print("Error. Id:", reqId, "Code:", errorCode, "Msg:", errorString)
-
         if errorCode in (502, 110):
             raise ConnectionError(
-                f"ErrorCode:{errorCode} ErrorMsg:{errorString}")
+                f"reqId:{reqId} ErrorCode:{errorCode} ErrorMsg:{errorString}")
+        else:
+            print(f"reqId:{reqId} ErrorCode:{errorCode} ErrorMsg:{errorString}")
 
     def nextValidId(self, orderId: int):
-        # super().nextValidId(orderId)
-        # print("setting nextValidOrderId: %d", orderId)
-        # self.nextValidOrderId = orderId
-        # print("NextValidId:", orderId)
         self.nextValidIdQueue.put(orderId)
 
     def openOrder(
@@ -473,14 +386,6 @@ class IbAPI(IbWrapper, IbClient):
             contract: Contract,
             order: IbOrder,
             orderState: OrderState):
-        # super().openOrder(orderId, contract, order, orderState)
-        # print("OpenOrder. PermId: ", order.permId, "ClientId:", order.clientId, " OrderId:", orderId,
-        #     "Account:", order.account, "Symbol:", contract.symbol, "SecType:", contract.secType,
-        #     "Exchange:", contract.exchange, "Action:", order.action, "OrderType:", order.orderType,
-        #     "TotalQty:", order.totalQuantity, "CashQty:", order.cashQty,
-        #     "LmtPrice:", order.lmtPrice, "AuxPrice:", order.auxPrice, "Status:", orderState.status
-        # )
-
         # get external order id
         self.gateway.ib_orderids.put(order.orderId, order.permId)
 
@@ -498,18 +403,6 @@ class IbAPI(IbWrapper, IbClient):
             whyHeld: str,
             mktCapPrice: float
     ):
-        # super().orderStatus(
-        #     orderId, status, filled, remaining,
-        #     avgFillPrice, permId, parentId,
-        #     lastFillPrice, clientId, whyHeld, mktCapPrice
-        # )
-        # print("OrderStatus. Id:", orderId, "Status:", status, "Filled:", filled,
-        #     "Remaining:", remaining, "AvgFillPrice:", avgFillPrice,
-        #     "PermId:", permId, "ParentId:", parentId, "LastFillPrice:",
-        #     lastFillPrice, "ClientId:", clientId, "WhyHeld:",
-        #     whyHeld, "MktCapPrice:", mktCapPrice
-        # )
-
         order_status = dict(
             orderId=orderId,
             status=status,
@@ -531,11 +424,6 @@ class IbAPI(IbWrapper, IbClient):
             contract: Contract,
             execution: Execution
     ):
-        # super().execDetails(reqId, contract, execution)
-        # print("ExecDetails. ReqId:", reqId, "Symbol:", contract.symbol, "SecType:", contract.secType,
-        #       "Currency:", contract.currency, execution
-        # )
-
         # get external deal id
         self.gateway.ib_dealids.put(execution.orderId, execution.execId)
 
@@ -547,17 +435,12 @@ class IbAPI(IbWrapper, IbClient):
         self.gateway.process_deal(deal_status)
 
     def commissionReport(self, commissionReport: CommissionReport):
-        # super().commissionReport(commissionReport)
-        # print("CommissionReport.", commissionReport)
         self.gateway.ib_commissions.put(
             commissionReport.execId,
             commissionReport.commission)
 
 
 class IbGateway(BaseGateway):
-
-    # Minimal time step, which was read from config
-    TIME_STEP = TIME_STEP
 
     # Short interest rate, e.g., 0.0098 for HK stock
     SHORT_INTEREST_RATE = 0.0098
@@ -571,12 +454,17 @@ class IbGateway(BaseGateway):
             gateway_name: str,
             start: datetime = None,
             end: datetime = None,
-            fees: BaseFees = BaseFees
+            fees: BaseFees = BaseFees,
+            **kwargs
     ):
         super().__init__(securities, gateway_name)
         self.fees = fees
         self.start = start
         self.end = end
+        if "num_of_min_bar" in kwargs:
+            self.num_of_min_bar = kwargs["num_of_min_bar"]
+        else:
+            self.num_of_min_bar = 60
 
         # key: Security, value: quque
         self.ib_contractdetails_done = {
@@ -586,37 +474,38 @@ class IbGateway(BaseGateway):
         # key:Security, value:int (reqId)
         self.ib_contractdetails_reqid = {s: None for s in securities}
 
-        # RealtimeBars subscription only supports 5 seconds bar (we use them to
-        # aggregate to 1 minute bars)
-        self.ib_consolidated_bars_done = {
-            s: DefaultQueue(maxsize=1) for s in securities}
-        # key:Security, value:List[Bar] (store up to 12, i.e., 1 min bar)
-        self.ib_5s_bars = {s: list() for s in securities}
-        # key:Security, value:int (reqId)
-        self.ib_5s_bars_reqid = {s: None for s in securities}
-        self.ib_5s_bars_max_no = 12
-        # to be consumed in get_recent_bar
-        self.ib_consolidated_1m_bar = {s: None for s in securities}
-
-        bar_req = ["1min", "1day"]
+        bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
+        bar_req = ["5sec", bar_interval, "1day"]
         self.ib_bars_done = {f: {s: DefaultQueue(
+            maxsize=1) for s in self.securities} for f in bar_req}
+        self.ib_bars_req_done = {f: {s: DefaultQueue(
             maxsize=1) for s in self.securities} for f in bar_req}
         self.ib_bars = {f: {s: list() for s in self.securities}
                         for f in bar_req}
         self.ib_bars_reqid = {
             f: {s: None for s in self.securities} for f in bar_req}
-        self.ib_bars_num = {f: {s: None for s in self.securities}
+        self.ib_bars_num = {f: {s: 0 for s in self.securities}
                             for f in bar_req}
 
-        self.ib_quotes_done = {s: DefaultQueue(maxsize=1) for s in securities}
+        # for hist requests
+        self.ib_hist_bars_done = {f: {s: DefaultQueue(
+            maxsize=1) for s in self.securities} for f in bar_req}
+        self.ib_hist_bars = {f: {s: list() for s in self.securities}
+                        for f in bar_req}
+        self.ib_hist_bars_reqid = {
+            f: {s: None for s in self.securities} for f in bar_req}
+        self.ib_hist_bars_num = {f: {s: 0 for s in self.securities}
+                            for f in bar_req}
+
+        self.ib_quotes_done = {
+            s: DefaultQueue(maxsize=1) for s in securities}
         # key:Security, value:Quote
         self.ib_quotes = {s: None for s in securities}
         # key:Security, value:int (reqId)
         self.ib_quotes_reqid = {s: None for s in securities}
 
         self.ib_orderbooks_done = {
-            s: DefaultQueue(
-                maxsize=1) for s in securities}
+            s: DefaultQueue(maxsize=1) for s in securities}
         # key:Security, value:Quote
         self.ib_orderbooks = {s: None for s in securities}
         # key:Security, value:int (reqId)
@@ -636,17 +525,16 @@ class IbGateway(BaseGateway):
     def close(self):
         # Unsubscribe data
         for security in self.securities:
-            if self.ib_5s_bars_reqid[security]:
-                self.api.cancelRealTimeBars(
-                    reqId=self.ib_5s_bars_reqid[security])
             if self.ib_quotes_reqid[security]:
                 self.api.cancelMktData(reqId=self.ib_quotes_reqid[security])
-            if self.ib_bars_reqid["1min"][security]:
-                self.api.cancelHistoricalData(
-                    reqId=self.ib_bars_reqid["1min"][security])
-            if self.ib_bars_reqid["1day"][security]:
-                self.api.cancelHistoricalData(
-                    reqId=self.ib_bars_reqid["1day"][security])
+            for bar_interval in self.ib_bars_reqid:
+                reqId = self.ib_bars_reqid[bar_interval][security]
+                if reqId is None:
+                    continue
+                if bar_interval == "5sec":
+                    self.api.cancelRealTimeBars(reqId=reqId)
+                else:
+                    self.api.cancelHistoricalData(reqId=reqId)
         # Disconnect API
         self.api.disconnect()
 
@@ -739,7 +627,7 @@ class IbGateway(BaseGateway):
                 f"{trade_mode} was passed in instead.")
         self._trade_mode = trade_mode
 
-    def req_bar(
+    def req_hist_bars(
             self,
             ib_contract: Contract,
             security: Security,
@@ -747,33 +635,46 @@ class IbGateway(BaseGateway):
             bar_num: int,
             update: bool = False
     ) -> int:
-        queryTime = "" if update else datetime.now().strftime("%Y%m%d %H:%M:%S")
-        if bar_interval == "1min":
-            durationStr = f"{bar_num * 60} S"
+        queryTime = "" if update else datetime.now().strftime("%Y%m%d %H:%M:%S Asia/Hong_Kong")
+        if "min" in bar_interval:
+            bar_interval_num = int(bar_interval.replace("min", ""))
+            assert bar_interval_num in (1, 2, 3, 5, 10, 15, 20, 30), (
+                f"{bar_interval} is NOT a valid bar size!"
+            )
+            bar_size = f"{bar_interval_num} mins" if bar_interval_num > 1 else f"{bar_interval_num} min"
+            durationStr = f"{bar_num * bar_interval_num * 60} S"
             self.api.reqId += 1
-            self.ib_bars_reqid["1min"][security] = self.api.reqId
-            self.ib_bars_num["1min"][security] = bar_num
+            reqId = self.api.reqId + 0
+            self.ib_hist_bars_reqid[bar_interval][security] = reqId
+            self.ib_hist_bars_num[bar_interval][security] = bar_num
+            self.ib_hist_bars[bar_interval][security] = []
             # request historical data
             self.api.reqHistoricalData(
-                reqId=self.api.reqId,
+                reqId=reqId,
                 contract=ib_contract,
                 endDateTime=queryTime,
                 durationStr=durationStr,
-                barSizeSetting="1 min",
+                barSizeSetting=bar_size,
                 whatToShow=get_what_to_show(security),
                 useRTH=0,
                 formatDate=1,
                 keepUpToDate=update,  # if True, endDateTime can not be specified
                 chartOptions=[])
-            return self.api.reqId
-        elif bar_interval == "1day":
-            durationStr = f"{bar_num} D"
+            return reqId
+        elif "day" in bar_interval:
+            bar_interval_num = int(bar_interval.replace("day", ""))
+            assert bar_interval_num in (1, ), (
+                f"{bar_interval} is NOT a valid bar size!"
+            )
+            durationStr = f"{bar_num} D"  # bar_interval_num == 1
             self.api.reqId += 1
-            self.ib_bars_reqid["1day"][security] = self.api.reqId
-            self.ib_bars_num["1day"][security] = bar_num
+            reqId = self.api.reqId + 0
+            self.ib_hist_bars_reqid[bar_interval][security] = reqId
+            self.ib_hist_bars_num[bar_interval][security] = bar_num
+            self.ib_hist_bars[bar_interval][security] = []
             # request historical data
             self.api.reqHistoricalData(
-                reqId=self.api.reqId,
+                reqId=reqId,
                 contract=ib_contract,
                 endDateTime=queryTime,
                 durationStr=durationStr,
@@ -783,76 +684,153 @@ class IbGateway(BaseGateway):
                 formatDate=1,
                 keepUpToDate=update,  # if True, endDateTime can not be specified
                 chartOptions=[])
-            return self.api.reqId
+            return reqId
         else:
             raise ValueError(
-                "bar_interval can only be '1min' or '1day', but "
+                "bar_interval can only be '{int}min' or '1day', but "
                 f"'{bar_interval}' was passed in.")
+
+    def req_realtime_bars(
+            self,
+            ib_contract: Contract,
+            security: Security,
+            bar_interval: str,
+    ) -> int:
+        """Request 5-seconds realtime bar"""
+        self.api.reqId += 1
+        reqId = self.api.reqId + 0
+        self.ib_bars_reqid[bar_interval][security] = reqId
+        self.api.reqRealTimeBars(
+            reqId,
+            ib_contract,
+            5,
+            get_what_to_show(security),
+            False,
+            []
+        )
+        return reqId
+
+    def req_market_data(
+            self,
+            ib_contract: Contract,
+            security: Security
+    ) -> int:
+        self.api.reqId += 1
+        reqId = self.api.reqId + 0
+        self.ib_quotes_reqid[security] = reqId
+        self.ib_orderbooks_reqid[security] = reqId
+        self.api.reqMktData(
+            reqId, ib_contract, "", False, False, [])
+        return reqId
+
+    def req_contract_details(
+            self,
+            ib_contract: Contract,
+            security: Security
+    ) -> int:
+        self.api.reqId += 1
+        reqId = self.api.reqId + 0
+        self.ib_contractdetails_reqid[security] = reqId
+        # Get accurate contract
+        self.api.reqContractDetails(
+            reqId=reqId, contract=ib_contract)
+        return reqId
 
     def subscribe(self):
         # "REALTIME", "FROZEN", "DELAYED", "DELAYED_FROZEN"
         self.api.reqMarketDataType(MarketDataTypeEnum.REALTIME)
         for security in self.securities:
             if self.ib_contractdetails[security] is None:
-                # construct vague contract
-                ib_contract = generate_ib_contract(security)
-                # Always remember reqId before request contracts
-                self.api.reqId += 1
-                self.ib_contractdetails_reqid[security] = self.api.reqId
-                self.api.reqContractDetails(
-                    reqId=self.api.reqId, contract=ib_contract)
-            # blocking here: get accurate contract from IB (at most wait for 5
-            # seconds)
-            reqId = self.ib_contractdetails_done[security].get(timeout=5)
-            if reqId is None:
                 try:
+                    # Try to load contract details from pickle file
                     with open(f".qtrader_cache/ib/contractdetails/{security.code}", "rb") as f:
                         contractdetails = pickle.load(f)
                         self.ib_contractdetails[security] = contractdetails
-                        reqId = self.api.reqId
-                except BaseException:
-                    raise FileNotFoundError(
-                        "Failed to get contract details within the time limit, "
-                        "and no .qtrader_cache either.")
-            if reqId == self.api.reqId:
-                # pickle contractdetails for later use to avoid requesting too
-                # frequently
-                Path(
-                    ".qtrader_cache/ib/contractdetails").mkdir(parents=True, exist_ok=True)
-                with open(f".qtrader_cache/ib/contractdetails/{security.code}", "wb") as f:
-                    contractdetails = self.ib_contractdetails.get(security)
-                    pickle.dump(contractdetails, f)
+                except FileNotFoundError:
+                    # Construct vague contract
+                    ib_contract = generate_ib_contract(security)
+                    # Get accurate contract
+                    reqId = self.req_contract_details(
+                        ib_contract=ib_contract,
+                        security=security
+                    )
+                    # blocking here
+                    contractdetails_reqId = self.ib_contractdetails_done[
+                        security].get(timeout=5)
+                    if contractdetails_reqId != reqId:
+                        raise ValueError(
+                            f"reqId mismatch: {contractdetails_reqId} != {reqId}")
 
-                ib_contract = self.get_ib_contract_from_security(security)
-                # request market data (quotes and orderbook)
-                self.api.reqId += 1
-                self.ib_quotes_reqid[security] = self.api.reqId
-                self.api.reqMktData(
-                    self.api.reqId, ib_contract, "", False, False, [])
-                print(f"Subscribed market data of {security.code}")
+                    # pickle contractdetails for use next time to avoid
+                    # requesting too frequently
+                    Path(
+                        ".qtrader_cache/ib/contractdetails").mkdir(parents=True, exist_ok=True)
+                    with open(f".qtrader_cache/ib/contractdetails/{security.code}", "wb") as f:
+                        contractdetails = self.ib_contractdetails.get(security)
+                        pickle.dump(contractdetails, f)
 
-                # request hist bar data
-                bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
-                reqId = self.req_bar(
-                    ib_contract,
-                    security,
-                    bar_interval,
-                    get_default_bar_num_from_bar_interval(bar_interval),
-                    True
+            if self.ib_contractdetails[security] is None:
+                raise ConnectionError(
+                    "Connection to IB server is probably blocked temporally "
+                    "due to requesting contract details too frequently."
                 )
-                # Blocking here to wait for the bars request done
-                bars_done_reqId = self.ib_bars_done[bar_interval][security].get(
-                    timeout=30)
-                if bars_done_reqId is None:
-                    raise TimeoutError("Failed to get bars within the time limit.")
-                if bars_done_reqId != reqId:
-                    raise ValueError("reqId do not match: "
-                       f"{bars_done_reqId} != {reqId}")
-                print(f"Subscribed bar data of {security.code}")
 
-            else:
+            # Prepare accurate IB contract
+            ib_contract = self.get_ib_contract_from_security(security)
+
+            # Request market data (quote and orderbook)
+            reqId = self.req_market_data(
+                ib_contract=ib_contract,
+                security=security
+            )
+            quotes_done_reqId = self.ib_quotes_reqid[security]
+            orderbooks_done_reqId = self.ib_orderbooks_reqid[security]
+            if quotes_done_reqId != reqId:
                 raise ValueError(
-                    f"reqId mismatch: {reqId} != {self.api.reqId}")
+                    f"reqId not match: {quotes_done_reqId}!={reqId}")
+            if orderbooks_done_reqId != reqId:
+                raise ValueError(
+                    f"reqId not match: {orderbooks_done_reqId}!={reqId}")
+            print(f"Subscribed market data of {security.code}")
+
+            # Read bar interval from config file
+            bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
+
+            # Request hist bar data
+            reqId = self.req_hist_bars(
+                ib_contract=ib_contract,
+                security=security,
+                bar_interval=bar_interval,
+                bar_num=self.num_of_min_bar,
+                update=False
+            )
+            # In pycharm debug mode, this line will sometimes (quite often)
+            # encounter timeout error. Setting a breakpoint here could make it
+            # less likely to happen. Don't know why
+            hist_bars_done_reqId = self.ib_hist_bars_done[bar_interval][
+                security].get(timeout=10)
+            if hist_bars_done_reqId != reqId:
+                raise ValueError(
+                    f"reqId not match: {hist_bars_done_reqId}!={reqId}")
+            self.api.cancelHistoricalData(reqId=reqId)
+            self.ib_hist_bars_reqid[bar_interval][security] = None
+            self.ib_hist_bars_num[bar_interval][security] = None
+            self.ib_bars[bar_interval][security] = self.ib_hist_bars[
+                bar_interval][security][:]
+            print(f"Subscribed hist bar data of {security.code}")
+
+            # Request realtime bar data
+            reqId = self.req_realtime_bars(
+                ib_contract=ib_contract,
+                security=security,
+                bar_interval=bar_interval,
+            )
+            bars_req_done_reqId = self.ib_bars_req_done[bar_interval][
+                security].get(timeout=10)
+            if bars_req_done_reqId != reqId:
+                raise ValueError(
+                    f"reqId not match: {bars_req_done_reqId}!={reqId}")
+            print(f"Subscribed realtime bar data of {security.code}")
 
     def unsubscribe(self):
         pass
@@ -862,102 +840,20 @@ class IbGateway(BaseGateway):
             security: Security,
             bar_interval: str
     ) -> List[Bar]:
-        """Get recent historical OHLCV"""
-
-        num_bars = self.ib_bars_num[bar_interval][security]
-        recent_bars = self.ib_bars[bar_interval][security][:num_bars]
+        """Get recent historical OHLCVs"""
+        num_bars = self.num_of_min_bar
+        recent_bars = self.ib_bars[bar_interval][security][-num_bars:]
         return recent_bars
-
-        # reqId = self.ib_bars_reqid[bar_interval][security]
-        # if reqId is None:
-        #     ib_contract = self.get_ib_contract_from_security(security)
-        #     reqId = self.req_bar(
-        #         ib_contract,
-        #         security,
-        #         bar_interval,
-        #         get_default_bar_num_from_bar_interval(bar_interval),
-        #         False
-        #     )
-        # # Blocking here to wait for the bars request done
-        # bars_done_reqId = self.ib_bars_done[bar_interval][security].get(
-        #     timeout=30)
-        # if bars_done_reqId is None:
-        #     raise TimeoutError("Failed to get bars within the time limit.")
-        # if bars_done_reqId == reqId:
-        #     num_bars = self.ib_bars_num[bar_interval][security]
-        #     recent_bars = self.ib_bars[bar_interval][security][:num_bars]
-        #
-        #     # Cancel request immediately
-        #     # Unlike get_recent_bar, this function (get_recent_bars) will send
-        #     # request to IB each time. So every time we have received the data,
-        #     # we must reset all related params, so that next time we can make
-        #     # a clean request
-        #     self.api.cancelHistoricalData(reqId=reqId)
-        #     self.ib_bars_reqid[bar_interval][security] = None
-        #     self.ib_bars_num[bar_interval][security] = None
-        #
-        #     # return the requested data
-        #     return recent_bars
-        # else:
-        #     raise ValueError(f"reqId mismatch: {bars_done_reqId} != {reqId}")
 
     def get_recent_bar(
             self,
             security: Security,
+            bar_interval: str
     ) -> Bar:
-        """Get most recent OHLCV
-        """
-        # Note (joseph 2022-01-13):
-        #
-        # reqHistoricalData can get streaming bar data (by setting keepUpToDate=True),
-        # [see https://interactivebrokers.github.io/tws-api/historical_bars.html]
-        # But if we do so, reqAccountUpdates will fail to receive data. Therefore
-        # we still use reqRealTimeBars to fetch 5sec bars, and then aggregate 12
-        # bars to a 1min bar.
-        #
-        # Below is the code that initially intend for receiving realtime 1min bar
-        # via reqHistoricalData:
-        #
-        # bars = self.get_recent_bars(security, bar_interval)
-        # assert self.ib_bars_done[bar_interval][security].get() == self.ib_bars_reqid[bar_interval][security],(
-        #     "reqId does not match in ib bars!")
-        # return bars[-2]  # the last bar might still be updating
-
-        reqId = self.ib_5s_bars_reqid[security]
-        if reqId is None:
-            # request 5sec bar data (to be aggregated to 1min bars)
-            # no more than 60 *new* requests for real time bars can be made in
-            # 10 minutes
-            # Ref:
-            # https://interactivebrokers.github.io/tws-api/realtime_bars.html
-            ib_contract = self.get_ib_contract_from_security(security)
-            self.api.reqId += 1
-            self.ib_5s_bars_reqid[security] = self.api.reqId
-            self.api.reqRealTimeBars(
-                self.api.reqId,
-                ib_contract,
-                5,
-                get_what_to_show(security),
-                False,
-                []
-            )
-            reqId = self.api.reqId
-        # Blocking here, until 1 min bar is available by aggregating all 5s bars
-        # If 1min bar is not available after 120 seconds, raise error
-        print("Aggregating 5sec bars to make 1min bar ...")
-        consolidated_bars_done_reqId = self.ib_consolidated_bars_done[security].get(
-            timeout=120)
-        if consolidated_bars_done_reqId is None:
-            raise TimeoutError(
-                "Failed to get consolidated bars within the time limit.")
-        if consolidated_bars_done_reqId == reqId:
-            consolidated_bar = self.ib_consolidated_1m_bar[security]
-            # bar has been consumed, reset to None
-            self.ib_consolidated_1m_bar[security] = None
-            return consolidated_bar
-        else:
-            raise ValueError(
-                f"reqId mismatch: {consolidated_bars_done_reqId} != {reqId}")
+        """Get most recent historical OHLCV"""
+        num_bars = self.num_of_min_bar
+        recent_bars = self.ib_bars[bar_interval][security][-num_bars:]
+        return recent_bars[-1]
 
     def get_recent_capital_distribution(
             self,
@@ -1100,21 +996,28 @@ class IbGateway(BaseGateway):
             if self.ib_contractdetails_reqid[security] == reqId:
                 return security
 
-    def get_security_from_ib_5s_bars_reqid(self, reqId: int) -> Security:
-        for security in self.ib_5s_bars_reqid:
-            if self.ib_5s_bars_reqid[security] == reqId:
-                return security
-
     def get_security_from_ib_bars_reqid(self, reqId: int) -> Security:
         for bar_interval in self.ib_bars_reqid:
             for security in self.ib_bars_reqid[bar_interval]:
                 if self.ib_bars_reqid[bar_interval][security] == reqId:
                     return security
 
+    def get_security_from_ib_hist_bars_reqid(self, reqId: int) -> Security:
+        for bar_interval in self.ib_hist_bars_reqid:
+            for security in self.ib_hist_bars_reqid[bar_interval]:
+                if self.ib_hist_bars_reqid[bar_interval][security] == reqId:
+                    return security
+
     def get_bar_interval_from_ib_bars_reqid(self, reqId: int) -> str:
         for bar_interval in self.ib_bars_reqid:
             for security in self.ib_bars_reqid[bar_interval]:
                 if self.ib_bars_reqid[bar_interval][security] == reqId:
+                    return bar_interval
+
+    def get_bar_interval_from_ib_hist_bars_reqid(self, reqId: int) -> str:
+        for bar_interval in self.ib_hist_bars_reqid:
+            for security in self.ib_hist_bars_reqid[bar_interval]:
+                if self.ib_hist_bars_reqid[bar_interval][security] == reqId:
                     return bar_interval
 
     def get_security_from_ib_quotes_reqid(self, reqId: int) -> Security:

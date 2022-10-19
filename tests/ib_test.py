@@ -13,13 +13,15 @@ written for another century.
 You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
-import sys
-import os
-from pathlib import Path
-SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-sys.modules.pop("qtrader", None)
-sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtalib")))
-sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtrader")))
+# import sys
+# import os
+# import time
+# from pathlib import Path
+# SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+# sys.modules.pop("qtrader", None)
+# sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtalib")))
+# sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtrader")))
+# sys.path.insert(0, str(Path(SCRIPT_PATH)))
 
 
 from datetime import datetime, timedelta
@@ -41,8 +43,10 @@ class TestIbGateway:
     def setup_class(self):
         stock_list = [
             # Currency(code="EUR.USD", lot_size=1000, security_name="EUR.USD", exchange=Exchange.IDEALPRO),
-            Futures(code="FUT.GC", lot_size=100, security_name="GCZ2", exchange=Exchange.NYMEX, expiry_date="20221228"),
-            # Futures(code="FUT.ZUC", lot_size=100, security_name="ZUCF22", exchange=Exchange.SGX, expiry_date="20220131"),
+            Futures(code="FUT.GC", lot_size=100, security_name="GCZ2",
+                    exchange=Exchange.NYMEX, expiry_date="20221228"),
+            Futures(code="FUT.SI", lot_size=5000, security_name="SIZ2",
+                    exchange=Exchange.NYMEX, expiry_date="20221228"),
         ]
         gateway_name = "Ib"
         gateway = IbGateway(
@@ -65,24 +69,28 @@ class TestIbGateway:
         self.gateway.close()
 
     # @pytest.mark.skip("Already tested")
-    def test_get_recent_bar(self):
-        for security in self.gateway.securities:
-            bar = self.gateway.get_recent_bar(security)
-            print(bar)
-            assert bar.datetime.second == 0
-            assert isinstance(bar.close, float)
-
-    # @pytest.mark.skip("Already tested")
     def test_get_recent_bars(self):
         for security in self.gateway.securities:
-            bars = self.gateway.get_recent_bars(security, "1min")
+            bars = self.gateway.get_recent_bars(security, "2min")
             print(f"Number of bars: {len(bars)}")
-            assert len(bars) == 480
+            assert len(bars) == 60
 
+    # @pytest.mark.skip("Already tested")
+    def test_get_recent_bar(self):
+        for _ in range(2):
+            for security in self.gateway.securities:
+                bar = self.gateway.get_recent_bar(security, "2min")
+                print(f"Bar data: {bar}")
+                assert bar.datetime.second == 0
+                assert isinstance(bar.close, float)
+            time.sleep(130)
+
+    @pytest.mark.skip("Already tested")
     def test_get_broker_balance(self):
         balance = self.gateway.get_broker_balance()
         assert balance.available_cash > 0
 
+    @pytest.mark.skip("Already tested")
     def test_get_all_broker_positions(self):
         positions = self.gateway.get_all_broker_positions()
         if positions:
