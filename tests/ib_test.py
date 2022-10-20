@@ -13,15 +13,15 @@ written for another century.
 You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
-# import sys
-# import os
-# import time
-# from pathlib import Path
-# SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-# sys.modules.pop("qtrader", None)
-# sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtalib")))
-# sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtrader")))
-# sys.path.insert(0, str(Path(SCRIPT_PATH)))
+import sys
+import os
+import time
+from pathlib import Path
+SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+sys.modules.pop("qtrader", None)
+sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtalib")))
+sys.path.insert(0, str(Path(SCRIPT_PATH).parent.parent.joinpath("qtrader")))
+sys.path.insert(0, str(Path(SCRIPT_PATH)))
 
 
 from datetime import datetime, timedelta

@@ -36,9 +36,9 @@ BACKTEST_GATEWAY = {
 
 IB_GATEWAY = {
     "broker_name": "IB",
-    "broker_account": "U6680457",  # "DU4267228", # "U6680457", # "DU4267228",
+    "broker_account": "DU4267228",  # "U6680457",
     "host": "127.0.0.1",
-    "port": 7496,  # 7497, # 7496, # 7497,
+    "port": 7497,  # 7496
     "clientid": 1,
     "pwd_unlock": -1,
 }
@@ -74,7 +74,7 @@ GATEWAYS = {
     # "Futufutures": FUTUFUTURES_GATEWAY
 }
 
-TIME_STEP = 15 * 60 * 1000  # time step in milliseconds
+TIME_STEP = 2 * 60 * 1000  # time step in milliseconds
 
 DATA_PATH = {
     "kline": "/Users/joseph/Dropbox/code/data/data/k_line", # "k1m" is must have

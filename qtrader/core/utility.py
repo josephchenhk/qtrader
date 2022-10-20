@@ -76,20 +76,38 @@ class DefaultQueue:
     def qsize(self):
         return self._queue.qsize()
 
-    def put(self, item: Any, block: bool = True, timeout: float = None):
-        self._queue.put(item, block, timeout)
+    def empty(self):
+        return self._queue.empty()
+
+    def full(self):
+        return self._queue.full()
+
+    def put(
+            self, item: Any,
+            block: bool = True,
+            timeout: float = None,
+            raise_error: bool = False
+    ):
+        try:
+            self._queue.put(item, block, timeout)
+        except queue.Full:
+            if raise_error:
+                raise queue.Full
 
     def get(
             self,
             block: bool = True,
             timeout: float = None,
-            default_item: Any = None
+            default_item: Any = None,
+            raise_error: bool = False
     ) -> Any:
         try:
-            item = self._queue.get(block, timeout)
+            return self._queue.get(block, timeout)
         except queue.Empty:
-            item = default_item
-        return item
+            if raise_error:
+                raise queue.Empty
+            else:
+                return default_item
 
 
 def timeit(func):
@@ -135,7 +153,8 @@ def try_parsing_datetime(
     dt_formats = (
         "%Y-%m-%d %H:%M:%S.%f",
         "%Y-%m-%d %H:%M:%S",
-        "%Y%m%d  %H:%M:%S"
+        "%Y%m%d  %H:%M:%S",
+        "%Y%m%d  %H:%M:%S Asia/Hong_Kong"
     )
     for fmt in dt_formats:
         try:
