@@ -122,11 +122,12 @@ class IbAPI(IbWrapper, IbClient):
         qt_bar = Bar(
             datetime=bar_time,
             security=security,
-            open=bar.open,
-            high=bar.high,
-            low=bar.low,
-            close=bar.close,
-            volume=bar.volume)
+            open=float(bar.open),
+            high=float(bar.high),
+            low=float(bar.low),
+            close=float(bar.close),
+            volume=int(bar.volume)
+        )
         self.gateway.ib_hist_bars[bar_interval][security].append(qt_bar)
 
         # Notify threads that are waiting for ib_hist_bars_done
@@ -172,11 +173,12 @@ class IbAPI(IbWrapper, IbClient):
         bar = Bar(
             datetime=bar_time,
             security=security,
-            open=open_,
-            high=high,
-            low=low,
-            close=close,
-            volume=volume)
+            open=float(open_),
+            high=float(high),
+            low=float(low),
+            close=float(close),
+            volume=int(volume)
+        )
         # print(bar)
         self.gateway.ib_bars["5sec"][security].append(bar)
         self.gateway.ib_bars_num["5sec"][security] += 1
