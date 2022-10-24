@@ -154,7 +154,11 @@ def try_parsing_datetime(
         "%Y-%m-%d %H:%M:%S.%f",
         "%Y-%m-%d %H:%M:%S",
         "%Y%m%d  %H:%M:%S",
-        "%Y%m%d  %H:%M:%S Asia/Hong_Kong"
+        "%Y%m%d  %H:%M:%S Asia/Hong_Kong",
+        "%Y%m%d  %H:%M:%S Asia/Shanghai",
+        "%Y%m%d",
+        "%Y%m%d Asia/Hong_Kong",
+        "%Y%m%d Asia/Shanghai"
     )
     for fmt in dt_formats:
         try:

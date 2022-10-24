@@ -108,17 +108,7 @@ class IbAPI(IbWrapper, IbClient):
         bar_interval = self.gateway.get_bar_interval_from_ib_hist_bars_reqid(
             reqId)
         security = self.gateway.get_security_from_ib_hist_bars_reqid(reqId)
-        if ":" in bar.date:
-            if "Asia/Hong_Kong" in bar.date:
-                bar_time = datetime.strptime(bar.date,
-                                             "%Y%m%d  %H:%M:%S Asia/Hong_Kong")
-            else:
-                bar_time = datetime.strptime(bar.date, "%Y%m%d  %H:%M:%S")
-        else:
-            if "Asia/Hong_Kong" in bar.date:
-                bar_time = datetime.strptime(bar.date, "%Y%m%d Asia/Hong_Kong")
-            else:
-                bar_time = datetime.strptime(bar.date, "%Y%m%d")
+        bar_time = try_parsing_datetime(bar.date)
         qt_bar = Bar(
             datetime=bar_time,
             security=security,
@@ -669,7 +659,7 @@ class IbGateway(BaseGateway):
     ) -> int:
         """Request historical bars"""
         queryTime = "" if update else datetime.now().strftime(
-            "%Y%m%d %H:%M:%S Asia/Hong_Kong")
+            "%Y%m%d %H:%M:%S Asia/Shanghai")
         if "min" in bar_interval:
             bar_interval_num = int(bar_interval.replace("min", ""))
             assert bar_interval_num in (1, 2, 3, 5, 10, 15, 20, 30), (
