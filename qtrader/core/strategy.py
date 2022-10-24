@@ -39,7 +39,7 @@ class BaseStrategy:
             strategy_version: str,
             engine: Engine,
             strategy_trading_sessions: List[List[datetime]] = None,
-            init_strategy_cash: Dict[str, float] = None,
+            init_strategy_account_balance: Dict[str, AccountBalance] = None,
             init_strategy_position: Dict[str, Position] = None
     ):
         self.securities = securities
@@ -47,12 +47,12 @@ class BaseStrategy:
         self.strategy_account = strategy_account
         self.strategy_version = strategy_version
         self.strategy_trading_sessions = strategy_trading_sessions
-        if init_strategy_cash is None:
-            init_strategy_cash = {gw: 0.0 for gw in securities}
+        if init_strategy_account_balance is None:
+            init_strategy_account_balance = {gw: AccountBalance(cash=0.0) for gw in securities}
         if init_strategy_position is None:
             init_strategy_position = {gw: Position() for gw in securities}
         self.init_strategy_portfolio(
-            init_strategy_cash=init_strategy_cash,
+            init_strategy_account_balance=init_strategy_account_balance,
             init_strategy_position=init_strategy_position
         )
         # Record the action at each time step
@@ -65,17 +65,17 @@ class BaseStrategy:
 
     def init_strategy_portfolio(
             self,
-            init_strategy_cash: Dict[str, float],
+            init_strategy_account_balance: Dict[str, AccountBalance],
             init_strategy_position: Dict[str, Position]
     ):
         """Portfolio information for a specific strategy"""
         self.portfolios = {}
         for gateway_name in self.securities:
             gateway = self.engine.gateways[gateway_name]
-            cash = init_strategy_cash[gateway_name]
+            account_balance = init_strategy_account_balance[gateway_name]
             position = init_strategy_position[gateway_name]
             portfolio = Portfolio(
-                account_balance=AccountBalance(cash=cash),
+                account_balance=account_balance,
                 position=position,
                 market=gateway
             )
