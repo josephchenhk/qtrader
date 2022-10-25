@@ -59,7 +59,7 @@ class BaseStrategy:
         self._actions = {gateway_name: "" for gateway_name in engine.gateways}
         # Record bar data at each time step
         self._data = {
-            gateway_name: {security: None for security in securities[gateway_name]}
+            gateway_name: {security: None for security in securities.get(gateway_name, [])}
             for gateway_name in engine.gateways
         }
 
