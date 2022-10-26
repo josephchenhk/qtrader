@@ -15,8 +15,6 @@ this file. If not, please write to: josephchenhk@gmail.com
 """
 import sys
 import os
-from pathlib import Path
-sys.path.insert(0, str(Path(os.getcwd()).joinpath("qtrader")))
 
 import pyautogui
 import plotly.graph_objects as go
@@ -27,8 +25,15 @@ from pathlib import Path
 import pickle
 import ast
 
-from qtrader.core.utility import try_parsing_datetime
 from qtrader_config import TIME_STEP
+from qtrader_config import LOCAL_PACKAGE_PATHS
+from qtrader_config import ADD_LOCAL_PACKAGE_PATHS_TO_SYSPATH
+if ADD_LOCAL_PACKAGE_PATHS_TO_SYSPATH:
+    for pth in LOCAL_PACKAGE_PATHS:
+        if pth not in sys.path:
+            sys.path.insert(0, pth)
+from qtrader.core.utility import try_parsing_datetime
+
 
 
 if len(sys.argv) > 2:
