@@ -64,6 +64,19 @@ class Currency(Security):
 
 
 @dataclass(frozen=True)
+class Commodity(Security):
+    """Commodity"""
+    code: str
+    security_name: str
+    lot_size: int = 1000                    # default to 1000
+    exchange: Exchange = Exchange.IDEALPRO  # default to IDEALPRO
+    expiry_date = None
+
+    def __post_init__(self):
+        pass
+
+
+@dataclass(frozen=True)
 class Futures(Security):
     """Futures"""
     code: str
