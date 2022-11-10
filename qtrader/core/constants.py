@@ -67,11 +67,13 @@ class Exchange(Enum):
     HKFE = "HKFE"           # Hong Kong Futures Exchange
     SSE = "SSE"             # Shanghai Stock Exchange
     SZSE = "SZSE"           # Shenzhen Stock Exchange
-    COMEX = "COMEX"         # Metals
+    CME = "CME"             # S&P Index, AUDUSD, etc
+    COMEX = "COMEX"         # Gold, silver, copper, etc
+    NYMEX = "NYMEX"         # Brent Oil, etc
+    ECBOT = "ECBOT"         # Bonds, soybean, rice, etc
     SGE = "SGE"             # Shanghai Gold Exchange
     IDEALPRO = "IDEALPRO"   # currency
     GLOBEX = "GLOBEX"       # futures
-    NYMEX = "NYMEX"         # Energy
     SMART = "SMART"         # SMART in IB
     SGX = "SGX"             # Singapore Exchange (https://www.sgx.com/)
     ICE = "ICE"             # Products: QO (Brent Oil)
