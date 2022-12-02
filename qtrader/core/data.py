@@ -17,6 +17,7 @@ this file. If not, please write to: josephchenhk@gmail.com
 
 import os
 import importlib
+import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from datetime import time as Time
@@ -314,5 +315,6 @@ def get_trading_day(
     elif dt.time() <= daily_close_time < daily_open_time:
         return dt.date()
     else:
-        raise ValueError(
+        warnings.warn(
             f"{dt} is NOT within {daily_open_time} and {daily_close_time}")
+        return None
