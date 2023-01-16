@@ -28,11 +28,11 @@ if "log" not in os.listdir():
     os.mkdir(os.path.join(os.getcwd(), "log"))
 logfile = f'./log/{datetime.now().strftime("%Y-%m-%d %H-%M-%S.%f")}.txt'
 fh = logging.FileHandler(logfile, mode='a', encoding="utf-8")
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.ERROR)
 
 # (3) create a stream handler(output to console) and set its logging level
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch.setLevel(logging.ERROR)
 
 # (4) define the output format of the two handlers above
 formatter = logging.Formatter(
