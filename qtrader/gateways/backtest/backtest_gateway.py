@@ -24,7 +24,7 @@ from dateutil.relativedelta import relativedelta
 
 import pandas as pd
 
-from qtrader_config import DATA_PATH, DATA_MODEL, TIME_STEP
+from qtrader_config import DATA_PATH, DATA_MODEL, TIME_STEP, DATA_FFILL
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction, OrderType
 from qtrader.core.data import Quote
@@ -590,7 +590,7 @@ def _req_historical_min_bars(
                         cur_time=ffill_bar_datetime.time(),
                         trading_sessions=trading_sessions
                     )
-                    if _is_trading_time:
+                    if _is_trading_time and DATA_FFILL:
                         ffill_bar = Bar(
                             security=security,
                             datetime=ffill_bar_datetime,
@@ -615,7 +615,7 @@ def _req_historical_min_bars(
                         cur_time=ffill_bar_datetime.time(),
                         trading_sessions=trading_sessions
                     )
-                    if _is_trading_time:
+                    if _is_trading_time and DATA_FFILL:
                         ffill_bar = Bar(
                             security=security,
                             datetime=ffill_bar_datetime,
