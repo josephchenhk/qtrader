@@ -359,28 +359,28 @@ def update_graph_live(n, strategy_name):
                 )
 
                 if len(trend_ts) > 0:
-                    down_color = [
-                        'rgba(206,72,45, 1.0)' if t == -1.0
+                    up_color = [
+                        'rgba(206,72,45, 1.0)' if t == 1.0
                         else 'rgba(206,72,45, 0.0)' for t in trend_ts]
                     trend_ups[gateway_name][security] = go.Scatter(
                         x=datetime_ts,
                         y=trend_up_ts,
                         mode='markers+lines',
-                        name="trend_down",
+                        name="trend_up",
                         line=dict(color="rgba(206,72,45, 0.3)"),
-                        marker_color=down_color,
+                        marker_color=up_color,
                     )
 
-                    up_color = [
-                        'rgba(60,179,113, 1.0)' if t == 1.0
+                    down_color = [
+                        'rgba(60,179,113, 1.0)' if t == -1.0
                         else 'rgba(60,179,113, 0.0)' for t in trend_ts]
                     trend_downs[gateway_name][security] = go.Scatter(
                         x=datetime_ts,
                         y=trend_down_ts,
                         mode='markers+lines',
-                        name="trend_up",
+                        name="trend_down",
                         line=dict(color="rgba(60,179,113, 0.3)"),
-                        marker_color=up_color
+                        marker_color=down_color
                     )
 
         vertical_spacing = 0.05
