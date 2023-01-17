@@ -126,6 +126,18 @@ def update_graph_live(n, strategy_name):
         signals = {
             gw: {
                 sec: None for sec in instruments[gw]} for gw in instruments}
+        tsv_t = {
+            gw: {
+                sec: None for sec in instruments[gw]} for gw in instruments}
+        tsv_m = {
+            gw: {
+                sec: None for sec in instruments[gw]} for gw in instruments}
+        tsv_avg_inflow = {
+            gw: {
+                sec: None for sec in instruments[gw]} for gw in instruments}
+        tsv_avg_outflow = {
+            gw: {
+                sec: None for sec in instruments[gw]} for gw in instruments}
         actions = {
             gw: {
                 sec: None for sec in instruments[gw]} for gw in instruments}
@@ -139,6 +151,10 @@ def update_graph_live(n, strategy_name):
                 trend_ts = []
                 trend_up_ts = []
                 trend_down_ts = []
+                tsv_t_ts = []
+                tsv_m_ts = []
+                tsv_avg_inflow_ts = []
+                tsv_avg_outflow_ts = []
                 signals[gateway_name][security] = []
                 actions[gateway_name][security] = []
                 for i in range(len(data["datetime"])):
@@ -155,6 +171,12 @@ def update_graph_live(n, strategy_name):
                         low_ts.append(data["low"][i][gw_idx][idx])
                         close_ts.append(data["close"][i][gw_idx][idx])
                         volume_ts.append(data["volume"][i][gw_idx][idx])
+                        tsv_t_ts.append(data["tsv_t"][i][gw_idx][idx])
+                        tsv_m_ts.append(data["tsv_m"][i][gw_idx][idx])
+                        tsv_avg_inflow_ts.append(
+                            data["tsv_avg_inflow"][i][gw_idx][idx])
+                        tsv_avg_outflow_ts.append(
+                            data["tsv_avg_outflow"][i][gw_idx][idx])
                         if data.get("trend"):
                             trend_ts.append(data["trend"][i][gw_idx][idx])
                         if data.get("trend_up"):
@@ -351,11 +373,29 @@ def update_graph_live(n, strategy_name):
                     close=close_ts,
                     name=f"OHLC_{security}"
                 )
-                volumes[gateway_name][security] = go.Bar(
+                tsv_t[gateway_name][security] = go.Bar(
                     x=datetime_ts,
-                    y=volume_ts,
-                    name=f"Volume_{security}",
+                    y=tsv_t_ts,
+                    name=f"TSV_{security}",
+                    marker=dict(color="grey")
+                )
+                tsv_m[gateway_name][security] = go.Line(
+                    x=datetime_ts,
+                    y=tsv_m_ts,
+                    name=f"TSV_MA_{security}",
                     marker=dict(color="blue")
+                )
+                tsv_avg_inflow[gateway_name][security] = go.Line(
+                    x=datetime_ts,
+                    y=tsv_avg_inflow_ts,
+                    name=f"TSV_AVG_INFLOW_{security}",
+                    marker=dict(color="green")
+                )
+                tsv_avg_outflow[gateway_name][security] = go.Line(
+                    x=datetime_ts,
+                    y=tsv_avg_outflow_ts,
+                    name=f"TSV_AVG_OUTFLOW_{security}",
+                    marker=dict(color="red")
                 )
 
                 if len(trend_ts) > 0:
@@ -467,7 +507,26 @@ def update_graph_live(n, strategy_name):
                             )
                     fig.update_xaxes(row=row, col=1, rangeslider_visible=False)
                     fig.add_trace(
-                        volumes[gateway_name][security],
+                        # volumes[gateway_name][security],
+                        tsv_t[gateway_name][security],
+                        row=row + 1,
+                        col=1
+                    )
+                    fig.add_trace(
+                        # volumes[gateway_name][security],
+                        tsv_m[gateway_name][security],
+                        row=row + 1,
+                        col=1
+                    )
+                    fig.add_trace(
+                        # volumes[gateway_name][security],
+                        tsv_avg_inflow[gateway_name][security],
+                        row=row + 1,
+                        col=1
+                    )
+                    fig.add_trace(
+                        # volumes[gateway_name][security],
+                        tsv_avg_outflow[gateway_name][security],
                         row=row + 1,
                         col=1
                     )
