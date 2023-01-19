@@ -32,7 +32,7 @@ fh.setLevel(logging.ERROR)
 
 # (3) create a stream handler(output to console) and set its logging level
 ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
+ch.setLevel(logging.INFO)
 
 # (4) define the output format of the two handlers above
 formatter = logging.Formatter(

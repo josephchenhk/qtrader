@@ -105,11 +105,17 @@ def update_graph_live(n, strategy_name):
         # sum over gateways
         portfolio_value_ts = [
             sum(spv) for spv in data["strategy_portfolio_value"]]
-        portfolio_value = go.Scatter(
+        # portfolio_value = go.Scatter(
+        #     x=datetime_ts,
+        #     y=portfolio_value_ts,
+        #     mode='lines',
+        #     name='Portfolio Value')
+        portfolio_value = go.Line(
             x=datetime_ts,
             y=portfolio_value_ts,
-            mode='lines',
-            name='Portfolio Value')
+            name=f"Portfoliio Value",
+            marker=dict(color="blue")
+        )
 
         candlesticks = {
             gw: {
@@ -373,6 +379,12 @@ def update_graph_live(n, strategy_name):
                     close=close_ts,
                     name=f"OHLC_{security}"
                 )
+                volumes[gateway_name][security] = go.Bar(
+                    x=datetime_ts,
+                    y=volume_ts,
+                    name=f"Volume_{security}",
+                    marker=dict(color="pink")
+                )
                 tsv_t[gateway_name][security] = go.Bar(
                     x=datetime_ts,
                     y=tsv_t_ts,
@@ -506,26 +518,27 @@ def update_graph_live(n, strategy_name):
                                 **act_annotation_param
                             )
                     fig.update_xaxes(row=row, col=1, rangeslider_visible=False)
+                    # fig.add_trace(
+                    #     volumes[gateway_name][security],
+                    #     row=row + 1,
+                    #     col=1
+                    # )
                     fig.add_trace(
-                        # volumes[gateway_name][security],
                         tsv_t[gateway_name][security],
                         row=row + 1,
                         col=1
                     )
                     fig.add_trace(
-                        # volumes[gateway_name][security],
                         tsv_m[gateway_name][security],
                         row=row + 1,
                         col=1
                     )
                     fig.add_trace(
-                        # volumes[gateway_name][security],
                         tsv_avg_inflow[gateway_name][security],
                         row=row + 1,
                         col=1
                     )
                     fig.add_trace(
-                        # volumes[gateway_name][security],
                         tsv_avg_outflow[gateway_name][security],
                         row=row + 1,
                         col=1

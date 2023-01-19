@@ -654,10 +654,12 @@ class FutuGateway(BaseGateway):
             now = datetime.now()
             end_date = now.strftime("%Y-%m-%d")
             if freq == "1Min":
-                start_date = (now - timedelta(minutes=periods)
+                num_days = int(periods / 5. / 60.) + 5
+                start_date = (now - timedelta(days=num_days)
                               ).strftime("%Y-%m-%d")
             elif freq == "1Day":
-                start_date = (now - timedelta(days=periods)
+                num_days = int(periods * 7. / 5.) + 60
+                start_date = (now - timedelta(days=num_days)
                               ).strftime("%Y-%m-%d")
         history_kline = self._api_req_historical_bar(
             code=instrument,
