@@ -103,6 +103,18 @@ class BaseStrategy:
     def get_strategy_portfolio_value(self, gateway_name: str) -> float:
         return self.portfolios[gateway_name].value
 
+    def get_account_balance(self, gateway_name: str) -> AccountBalance:
+        return self.engine.portfolios[gateway_name].account_balance
+
+    def get_strategy_account_balance(self, gateway_name: str) -> AccountBalance:
+        return self.portfolios[gateway_name].account_balance
+
+    def get_position(self, gateway_name: str) -> Position:
+        return self.engine.portfolios[gateway_name].position
+
+    def get_strategy_position(self, gateway_name: str) -> Position:
+        return self.portfolios[gateway_name].position
+
     def get_action(self, gateway_name: str) -> str:
         return self._actions[gateway_name]
 
