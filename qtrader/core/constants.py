@@ -70,6 +70,7 @@ class Exchange(Enum):
     CME = "CME"             # S&P Index, AUDUSD, etc
     COMEX = "COMEX"         # Gold, silver, copper, etc
     NYMEX = "NYMEX"         # Brent Oil, etc
+    CBOT = "CBOT"           # Bonds, soybean, rice, etc
     ECBOT = "ECBOT"         # Bonds, soybean, rice, etc
     SGE = "SGE"             # Shanghai Gold Exchange
     IDEALPRO = "IDEALPRO"   # currency
