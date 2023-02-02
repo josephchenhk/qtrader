@@ -308,11 +308,11 @@ def get_trading_day(
 ) -> Date:
     """Get futures trading day according to daily_open_time and daily_close_time
     given."""
-    if daily_open_time <= dt.time() <= daily_close_time:
+    if daily_open_time <= daily_close_time:
         return dt.date()
-    elif daily_close_time < daily_open_time <= dt.time():
+    elif daily_close_time < daily_open_time and dt.time() > daily_close_time:
         return (dt + timedelta(days=1)).date()
-    elif dt.time() <= daily_close_time < daily_open_time:
+    elif daily_close_time < daily_open_time and dt.time() <= daily_close_time:
         return dt.date()
     else:
         warnings.warn(
