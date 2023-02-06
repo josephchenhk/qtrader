@@ -71,10 +71,11 @@ GATEWAYS = {
     "Ib": IB_GATEWAY,
     "Backtest": BACKTEST_GATEWAY,
     # "Cqg": CQG_GATEWAY,
-    # "Futufutures": FUTUFUTURES_GATEWAY
+    "Futu": FUTU_GATEWAY,
+    "Futufutures": FUTUFUTURES_GATEWAY
 }
 
-TIME_STEP = 2 * 60 * 1000  # time step in milliseconds
+TIME_STEP = 1 * 60 * 1000  # time step in milliseconds
 
 DATA_PATH = {
     "kline": "/Users/joseph/Dropbox/code/data/data/k_line", # "k1m" is must have
