@@ -93,7 +93,7 @@ class FutuGateway(BaseGateway):
             fees: BaseFees = BaseFees,
             **kwargs
     ):
-        super().__init__(securities, gateway_name)
+        super().__init__(securities, gateway_name, **kwargs)
         self.fees = fees
         self.start = start
         self.end = end
@@ -239,10 +239,19 @@ class FutuGateway(BaseGateway):
         """Callback of Order"""
         orderid = content["order_id"].values[0]
         order = self.orders.get(orderid)  # blocking
+
+        # Special treatment for HK stock
+        order.filled_quantity = content["dealt_qty"].values[0]
+        if (
+            isinstance(order.security, Stock)
+            and "HK." in order.security.code
+        ):
+            lot_size = order.security.lot_size
+            order.filled_quantity /= lot_size
+
         order.updated_time = try_parsing_datetime(
             content["updated_time"].values[0])
         order.filled_avg_price = content["dealt_avg_price"].values[0]
-        order.filled_quantity = content["dealt_qty"].values[0]
         order.status = convert_orderstatus_futu2qt(
             content["order_status"].values[0])
         # In simulate env, deal is not pushed; we handle it here
@@ -267,6 +276,16 @@ class FutuGateway(BaseGateway):
         orderid = content["order_id"].values[0]
         dealid = content["deal_id"].values[0]
         order = self.orders.get(orderid)  # blocking
+
+        # Special treatment for HK stock
+        filled_quantity = content["qty"].values[0]
+        if (
+            isinstance(order.security, Stock)
+            and "HK." in order.security.code
+        ):
+            lot_size = order.security.lot_size
+            filled_quantity /= lot_size
+
         deal = Deal(
             security=order.security,
             direction=order.direction,
@@ -275,7 +294,7 @@ class FutuGateway(BaseGateway):
             updated_time=try_parsing_datetime(
                 content["create_time"].values[0]),
             filled_avg_price=content["price"].values[0],
-            filled_quantity=content["qty"].values[0],
+            filled_quantity=filled_quantity,
             dealid=dealid,
             orderid=orderid)
         self.deals.put(dealid, deal)
@@ -407,8 +426,16 @@ class FutuGateway(BaseGateway):
                 f"Order type {order.order_type} is not supported in Futu "
                 "Gateway.")
 
-        code = order.security.code
+        # Special treatment for HK stock
+        qty = int(order.quantity)
+        if (
+            isinstance(order.security, Stock)
+            and "HK." in order.security.code
+        ):
+            qty = int(order.quantity * order.security.lot_size)
+
         # Special treatment for HK futures
+        code = order.security.code
         if (
             isinstance(order.security, Futures)
             and "HK." in order.security.code
@@ -418,7 +445,7 @@ class FutuGateway(BaseGateway):
 
         ret_code, data = self.trd_ctx.place_order(
             price=price,
-            qty=order.quantity,
+            qty=qty,
             code=code,
             trd_side=convert_direction_qt2futu(order.direction),
             order_type=order_type,
