@@ -48,7 +48,7 @@ class BaseGateway(ABC):
             self,
             securities: List[Security],
             gateway_name: str = "Backtest",
-            trading_sessions: Dict[str, List] = None
+            **kwargs
     ):
         self._market_datetime = None
         self._trade_mode = None
@@ -65,7 +65,10 @@ class BaseGateway(ABC):
 
         # If trading sessions are not specified explicitly, we load them from
         # yaml file
-        if trading_sessions is not None:
+        if 'trading_sessions' in kwargs:
+            trading_sessions = kwargs.get('trading_sessions')
+            assert type(trading_sessions) == dict, (
+                "trading_sessions should be a dict: Dict[str, List].")
             self.trading_sessions = trading_sessions
         else:
             gateway_path = os.path.dirname(os.path.realpath(__file__))
