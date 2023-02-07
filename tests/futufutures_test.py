@@ -2,7 +2,7 @@
 # @Time    : 11/2/2022 1:46 pm
 # @Author  : Joseph Chen
 # @Email   : josephchenhk@gmail.com
-# @FileName: futu_test.py
+# @FileName: futufutures_test.py
 
 """
 Copyright (C) 2020 Joseph Chen - All Rights Reserved
@@ -47,29 +47,26 @@ class TestFutuGateway:
 
     def setup_class(self):
         stock_list = [
-            # Futures(
-            #     code="HK.MCHmain",
-            #     lot_size=10,
-            #     security_name="HK.MCHmain",
-            #     exchange=Exchange.HKFE,
-            #     expiry_date="20230228"),
-            Stock(
-                code="HK.00981",
-                lot_size=500,
-                security_name="HK.00981",
-                exchange=Exchange.SEHK),
+            Futures(
+                code="HK.MCHmain",
+                lot_size=10,
+                security_name="HK.MCHmain",
+                exchange=Exchange.HKFE,
+                expiry_date="20230228"),
         ]
-        gateway_name = "Futu"
-        gateway = FutuGateway(
+        gateway_name = "Futufutures"
+        gateway = FutuFuturesGateway(
             securities=stock_list,
             end=datetime.now() + timedelta(minutes=2),
             gateway_name=gateway_name,
-            fees=FutuFeesSEHK,
-            trading_sessions={'HK.00981': [
-                [datetime(1970, 1, 1, 9, 30, 0),
+            fees=FutuFeesHKFE,
+            trading_sessions={'HK.MCHmain': [
+                [datetime(1970, 1, 1, 9, 15, 0),
                  datetime(1970, 1, 1, 12, 0, 0)],
                 [datetime(1970, 1, 1, 13, 0, 0),
-                 datetime(1970, 1, 1, 16, 0, 0)]]
+                 datetime(1970, 1, 1, 16, 0, 0)],
+                [datetime(1970, 1, 1, 17, 15, 0),
+                 datetime(1970, 1, 1, 3, 0, 0)]]
             }
         )
 
@@ -87,7 +84,7 @@ class TestFutuGateway:
     def teardown_class(self):
         self.gateway.close()
 
-    @pytest.mark.skip("Already tested")
+    # @pytest.mark.skip("Already tested")
     def test_get_recent_bar(self):
         for _ in range(len(self.gateway.securities)):
             for security in self.gateway.securities:
@@ -97,12 +94,12 @@ class TestFutuGateway:
                 assert isinstance(bar.close, float)
             time.sleep(5)
 
-    @pytest.mark.skip("Already tested")
+    # @pytest.mark.skip("Already tested")
     def test_get_broker_balance(self):
         balance = self.gateway.get_broker_balance()
         assert balance.cash > 0
 
-    @pytest.mark.skip("Already tested")
+    # @pytest.mark.skip("Already tested")
     def test_get_all_broker_positions(self):
         positions = self.gateway.get_all_broker_positions()
         if positions:
@@ -163,18 +160,12 @@ class TestFutuGateway:
             return False
 
     def test_send_order(self):
-        # security = Futures(
-        #     code="HK.MCHmain",
-        #     lot_size=10,
-        #     security_name="HK.MCHmain",
-        #     exchange=Exchange.HKFE,
-        #     expiry_date="20230228"
-        # )
-        security = Stock(
-            code="HK.00981",
-            lot_size=500,
-            security_name="HK.00981",
-            exchange=Exchange.SEHK
+        security = Futures(
+            code="HK.MCHmain",
+            lot_size=10,
+            security_name="HK.MCHmain",
+            exchange=Exchange.HKFE,
+            expiry_date="20230228"
         )
         quantity = 1
         direction = Direction.SHORT
