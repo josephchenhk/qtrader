@@ -41,10 +41,28 @@ CQG_GATEWAY = {
     "port": 2823,
 }
 
+FUTU_GATEWAY = {
+    "broker_name": "FUTU",
+    "broker_account": "TEST123456",
+    "host": "127.0.0.1",
+    "port": 11111,
+    "pwd_unlock": 123456,
+}
+
+FUTUFUTURES_GATEWAY = {
+    "broker_name": "FUTUFUTURES",
+    "broker_account": "TEST123456",
+    "host": "127.0.0.1",
+    "port": 11111,
+    "pwd_unlock": 123456,
+}
+
 GATEWAYS = {
     "Ib": IB_GATEWAY,
     "Backtest": BACKTEST_GATEWAY,
-    "Cqg": CQG_GATEWAY
+    "Cqg": CQG_GATEWAY,
+    "Futu": FUTU_GATEWAY,
+    "Futufutures": FUTUFUTURES_GATEWAY
 }
 
 TIME_STEP = 60000  # time step in milliseconds
