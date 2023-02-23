@@ -18,8 +18,11 @@ this file. If not, please write to: josephchenhk@gmail.com
 #
 #                          Demo strategy
 ##########################################################################
+
 from datetime import datetime
 
+from qtrader.core.balance import AccountBalance
+from qtrader.core.position import Position
 from qtrader.core.constants import TradeMode, Exchange
 from qtrader.core.event_engine import BarEventEngineRecorder, BarEventEngine
 from qtrader.core.security import Futures
@@ -54,7 +57,6 @@ if __name__ == "__main__":
                 exchange=Exchange.NYMEX, expiry_date="20220727"),
     ]
 
-    init_capital = 100000
     gateway = UseGateway(
         securities=stock_list,
         start=start,
@@ -79,11 +81,15 @@ if __name__ == "__main__":
     # Initialize strategy
     strategy_account = "DemoStrategy"
     strategy_version = "1.0"
+    init_position = Position()
+    init_capital = 1000000
+    init_account_balance = AccountBalance(cash=init_capital)
     strategy = DemoStrategy(
         securities={gateway_name: stock_list},
         strategy_account=strategy_account,
         strategy_version=strategy_version,
-        init_strategy_cash={gateway_name: init_capital},
+        init_strategy_account_balance={'Backtest': init_account_balance},
+        init_strategy_position={'Backtest': init_position},
         engine=engine,
         strategy_trading_sessions={
             "FUT.GC": [[datetime(1970, 1, 1, 15, 0, 0),

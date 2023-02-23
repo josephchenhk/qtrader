@@ -20,6 +20,8 @@ from typing import Dict, List
 import pandas as pd
 from finta import TA
 
+from qtrader.core.balance import AccountBalance
+from qtrader.core.position import Position
 from qtrader.core.constants import Direction, Offset, OrderType, TradeMode, OrderStatus
 from qtrader.core.data import Bar
 from qtrader.core.engine import Engine
@@ -34,7 +36,8 @@ class DemoStrategy(BaseStrategy):
                  securities: Dict[str, List[Stock]],
                  strategy_account: str,
                  strategy_version: str,
-                 init_strategy_cash: Dict[str, float],
+                 init_strategy_account_balance: Dict[str, AccountBalance],
+                 init_strategy_position: Dict[str, Position],
                  engine: Engine,
                  **kwargs
                  ):
@@ -42,8 +45,9 @@ class DemoStrategy(BaseStrategy):
             securities=securities,
             strategy_account=strategy_account,
             strategy_version=strategy_version,
+            init_strategy_account_balance=init_strategy_account_balance,
+            init_strategy_position=init_strategy_position,
             engine=engine,
-            init_strategy_cash=init_strategy_cash,
             **kwargs
         )
         # security list
