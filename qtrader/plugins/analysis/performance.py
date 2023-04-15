@@ -911,17 +911,24 @@ def plot_pnl_with_category(
 
 
 def plot_signals(
-        instruments: Dict[str, Dict[str, List[Any]]],
         data: pd.DataFrame,
-        show_fields: Dict[str, Dict[str, Any]] = None
+        instruments: Dict[str, Dict[str, List[Any]]],
+        show_fields: Dict[str, Dict[str, List[Any]]] = None
 ):
     # default to show all columns in data except the followings
     if show_fields is None:
         except_fields = ['datetime', 'portfolio_value',
                          'strategy_portfolio_value',
                          'action', 'bar_datetime']
-        show_fields = {f: "line" for f in data.columns
-                       if f not in except_fields}
+        show_fields = {}
+        for k, v in instruments.items():
+            n = len(instruments[k]['security'])
+            show_fields[k] = {}
+            for f in data.columns:
+                if f in except_fields:
+                    continue
+                show_fields[k][f] = \
+                    [dict(func=go.Bar, marker=dict(color="grey"))] * n
     # get latest timestamp
     datetime_ts = [
         try_parsing_datetime(max(literal_eval(dt)))
