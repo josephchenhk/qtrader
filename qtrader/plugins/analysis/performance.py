@@ -910,11 +910,26 @@ def plot_pnl_with_category(
     print(f"Saved to {str(Path(result_path).parent)}/pnl_with_category.html")
 
 
+def string_to_numbers(x: Any)->Any:
+    return literal_eval(str(x).replace("nan", "None"))
+
 def plot_signals(
         data: pd.DataFrame,
         instruments: Dict[str, Dict[str, List[Any]]],
-        show_fields: Dict[str, Dict[str, List[Any]]] = None
+        show_fields: Dict[str, Dict[str, List[Any]]] = None,
+        save_path: str = None
 ):
+    """
+    Plot P&L and corresponding signals
+    :param data: backtest resutls
+    :param instruments: dictionary with security information
+    :param show_fields: dictionary specifying fields to be plotted
+    :param save_path: if not None, specify the saving path
+    :return: plotly graph object (Go)
+    """
+    # Convert the data types in data
+    for col in data.columns:
+        data[col] = data[col].apply(lambda x: string_to_numbers(x))
     # default to show all columns in data except the followings
     if show_fields is None:
         except_fields = ['datetime', 'portfolio_value',
@@ -927,16 +942,16 @@ def plot_signals(
             for f in data.columns:
                 if f in except_fields:
                     continue
-                show_fields[k][f] = \
-                    [dict(func=go.Bar, marker=dict(color="grey"))] * n
+                show_fields[k][f] = [dict(func=go.Line,
+                    style=dict(marker=dict(color="grey")), pos=1)] * n
     # get latest timestamp
     datetime_ts = [
-        try_parsing_datetime(max(literal_eval(dt)))
+        try_parsing_datetime(max(dt))
         for dt in data["datetime"]
     ]
     # sum over gateways
     portfolio_value_ts = [
-        sum(literal_eval(spv)) for spv in data["strategy_portfolio_value"]]
+        sum(spv) for spv in data["strategy_portfolio_value"]]
 
     portfolio_value = go.Line(
         x=datetime_ts,
@@ -947,57 +962,33 @@ def plot_signals(
 
     candlesticks = {
         gw: {
-            sec: None for sec in instruments[gw]} for gw in instruments}
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
     volumes = {
         gw: {
-            sec: None for sec in instruments[gw]} for gw in instruments}
-    # trend_ups = {
-    #     gw: {
-    #         sec: None for sec in instruments[gw]} for gw in instruments}
-    # trend_downs = {
-    #     gw: {
-    #         sec: None for sec in instruments[gw]} for gw in instruments}
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
     signals = {
         gw: {
-            sec: None for sec in instruments[gw]} for gw in instruments}
-    # tsv_t = {
-    #     gw: {
-    #         sec: None for sec in instruments[gw]} for gw in instruments}
-    # tsv_m = {
-    #     gw: {
-    #         sec: None for sec in instruments[gw]} for gw in instruments}
-    # tsv_avg_inflow = {
-    #     gw: {
-    #         sec: None for sec in instruments[gw]} for gw in instruments}
-    # tsv_avg_outflow = {
-    #     gw: {
-    #         sec: None for sec in instruments[gw]} for gw in instruments}
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
     actions = {
         gw: {
-            sec: None for sec in instruments[gw]} for gw in instruments}
-
-    fields = {}
-    for field in show_fields:
-        fields[field] = {
-            gw: {sec: None for sec in instruments[gw]} for gw in instruments}
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
+    # different strategy will have different recorded fields
+    fields = {
+        gw: {
+            sec: {f: None for f in show_fields[gw]}
+            for sec in instruments[gw]['security']
+        } for gw in instruments
+    }
 
     for gw_idx, gateway_name in enumerate(instruments):
-        for idx, security in enumerate(instruments[gateway_name]):
+        for idx, security in enumerate(instruments[gateway_name]['security']):
             open_ts = []
             high_ts = []
             low_ts = []
             close_ts = []
             volume_ts = []
-            # trend_ts = []
-            # trend_up_ts = []
-            # trend_down_ts = []
-            # tsv_t_ts = []
-            # tsv_m_ts = []
-            # tsv_avg_inflow_ts = []
-            # tsv_avg_outflow_ts = []
-
             field_ts = {}
-            for field in show_fields:
+            for field in show_fields[gateway_name]:
                 field_ts[field] = []
 
             signals[gateway_name][security] = []
@@ -1016,27 +1007,12 @@ def plot_signals(
                     low_ts.append(data["low"][i][gw_idx][idx])
                     close_ts.append(data["close"][i][gw_idx][idx])
                     volume_ts.append(data["volume"][i][gw_idx][idx])
-                    # tsv_t_ts.append(data["tsv_t"][i][gw_idx][idx])
-                    # tsv_m_ts.append(data["tsv_m"][i][gw_idx][idx])
-                    # tsv_avg_inflow_ts.append(
-                    #     data["tsv_avg_inflow"][i][gw_idx][idx])
-                    # tsv_avg_outflow_ts.append(
-                    #     data["tsv_avg_outflow"][i][gw_idx][idx])
 
-                    for field in show_fields:
+                    for field in show_fields[gateway_name]:
                         if field not in data.columns:
                             raise ValueError(f"{field} is NOT a column tag in "
                                              f"`data`({data.columns}).")
                         field_ts[field].append(data[field][i][gw_idx][idx])
-
-                    # if data.get("trend"):
-                    #     trend_ts.append(data["trend"][i][gw_idx][idx])
-                    # if data.get("trend_up"):
-                    #     trend_up_ts.append(
-                    #         data["trend_up"][i][gw_idx][idx])
-                    # if data.get("trend_down"):
-                    #     trend_down_ts.append(
-                    #         data["trend_down"][i][gw_idx][idx])
 
                     if (
                             "signal" in data.columns
@@ -1233,77 +1209,27 @@ def plot_signals(
                 marker=dict(color="pink")
             )
 
-            for field in show_fields:
-                func = show_fields[field]["func"]
-                params = {k: v for k, v in show_fields[field].items()
-                          if k != "func"}
-                fields[field][gateway_name][security] = func(
+            for field in show_fields[gateway_name]:
+                func = show_fields[gateway_name][field][idx]["func"]
+                style = show_fields[gateway_name][field][idx]["style"]
+                fields[gateway_name][security][field] = func(
                     x=datetime_ts,
                     y=field_ts[field],
                     name=f"{field}_{gateway_name}_{security}",
-                    **params
-                )
-            # tsv_t[gateway_name][security] = go.Bar(
-            #     x=datetime_ts,
-            #     y=tsv_t_ts,
-            #     name=f"TSV_{security}",
-            #     marker=dict(color="grey")
-            # )
-            # tsv_m[gateway_name][security] = go.Line(
-            #     x=datetime_ts,
-            #     y=tsv_m_ts,
-            #     name=f"TSV_MA_{security}",
-            #     marker=dict(color="blue")
-            # )
-            # tsv_avg_inflow[gateway_name][security] = go.Line(
-            #     x=datetime_ts,
-            #     y=tsv_avg_inflow_ts,
-            #     name=f"TSV_AVG_INFLOW_{security}",
-            #     marker=dict(color="green")
-            # )
-            # tsv_avg_outflow[gateway_name][security] = go.Line(
-            #     x=datetime_ts,
-            #     y=tsv_avg_outflow_ts,
-            #     name=f"TSV_AVG_OUTFLOW_{security}",
-            #     marker=dict(color="red")
-            # )
-
-            if len(trend_ts) > 0:
-                up_color = [
-                    'rgba(206,72,45, 1.0)' if t == 1.0
-                    else 'rgba(206,72,45, 0.0)' for t in trend_ts]
-                trend_ups[gateway_name][security] = go.Scatter(
-                    x=datetime_ts,
-                    y=trend_up_ts,
-                    mode='markers+lines',
-                    name="trend_up",
-                    line=dict(color="rgba(206,72,45, 0.3)"),
-                    marker_color=up_color,
-                )
-
-                down_color = [
-                    'rgba(60,179,113, 1.0)' if t == -1.0
-                    else 'rgba(60,179,113, 0.0)' for t in trend_ts]
-                trend_downs[gateway_name][security] = go.Scatter(
-                    x=datetime_ts,
-                    y=trend_down_ts,
-                    mode='markers+lines',
-                    name="trend_down",
-                    line=dict(color="rgba(60,179,113, 0.3)"),
-                    marker_color=down_color
+                    **style
                 )
 
     vertical_spacing = 0.05
     num_plots = 1  # 1 for portfolio value
     for k, v in instruments.items():
-        num_plots += len(v)  # k for gateway, v for list of securities
+        num_plots += len(v['security'])  # k for gateway, v for list of securities
     row_height = (1 - vertical_spacing * num_plots) / num_plots
     row_heights = []
     row_titles = []
     row_heights.append(row_height)
     row_titles.append("Portfolio Value")
     for gateway_name in instruments:
-        for security in instruments[gateway_name]:
+        for security in instruments[gateway_name]['security']:
             ohlc_height = row_height * 0.7
             v_height = row_height * 0.3
             row_heights.extend([ohlc_height, v_height])
@@ -1338,7 +1264,7 @@ def plot_signals(
         # gw_idx=1, idx=1:
         # row=10=3*2+idx*2+2=len(instruments[list(instruments.keys())[gw_idx-1]])*2+idx*2+2
         for gw_idx, gateway_name in enumerate(instruments):
-            for idx, security in enumerate(instruments[gateway_name]):
+            for idx, security in enumerate(instruments[gateway_name]['security']):
                 if gw_idx == 0:
                     row = idx * 2 + 2
                 else:
@@ -1349,18 +1275,6 @@ def plot_signals(
                     row=row,
                     col=1,
                 )
-                if trend_ups[gateway_name][security] is not None:
-                    fig.add_trace(
-                        trend_ups[gateway_name][security],
-                        row=row,
-                        col=1,
-                    )
-                if trend_downs[gateway_name][security] is not None:
-                    fig.add_trace(
-                        trend_downs[gateway_name][security],
-                        row=row,
-                        col=1,
-                    )
                 if signals[gateway_name][security] is not None:
                     for annotation_param in signals[gateway_name][security]:
                         fig.add_annotation(
@@ -1376,31 +1290,21 @@ def plot_signals(
                             **act_annotation_param
                         )
                 fig.update_xaxes(row=row, col=1, rangeslider_visible=False)
-                # fig.add_trace(
-                #     volumes[gateway_name][security],
-                #     row=row + 1,
-                #     col=1
-                # )
-                fig.add_trace(
-                    tsv_t[gateway_name][security],
-                    row=row + 1,
-                    col=1
-                )
-                fig.add_trace(
-                    tsv_m[gateway_name][security],
-                    row=row + 1,
-                    col=1
-                )
-                fig.add_trace(
-                    tsv_avg_inflow[gateway_name][security],
-                    row=row + 1,
-                    col=1
-                )
-                fig.add_trace(
-                    tsv_avg_outflow[gateway_name][security],
-                    row=row + 1,
-                    col=1
-                )
+
+                for field in show_fields[gateway_name]:
+                    if show_fields[gateway_name][field][idx]['pos'] == 1:
+                        fig.add_trace(
+                            fields[gateway_name][security][field],
+                            row=row,
+                            col=1,
+                        )
+                    elif show_fields[gateway_name][field][idx]['pos'] == 2:
+                        fig.add_trace(
+                            fields[gateway_name][security][field],
+                            row=row+1,
+                            col=1,
+                        )
+
                 fig.update_xaxes(
                     row=row + 1, col=1, rangeslider_visible=False)
 
@@ -1411,7 +1315,19 @@ def plot_signals(
     width, height = pyautogui.size()
     fig.layout.height = (height // 3) * num_plots
     fig.layout.width = width
+
+    fig.update(layout_xaxis_rangeslider_visible=False)
+
+    fig.layout.yaxis2.showgrid = False
+
+    # fig.show()
+    if save_path:
+        offline.plot(
+            fig,
+            filename=f"{save_path}/signals.html")
+        print(f"Saved to {save_path}/signals.html")
     return fig
+
 
 if __name__ == "__main__":
     # # Information provided must be consistent with the corresponding strategy
@@ -1457,24 +1373,28 @@ if __name__ == "__main__":
     # )
 
     instruments = {
-        "security": {
-            "Backtest": ["HK.MHImain", "HK.HHImain"],
-        },
-        "lot": {
-            "Backtest": [10, 50],
-        },
-        "commission": {
-            "Backtest": [10.1, 10.1],
-        },
-        "slippage": {
-            "Backtest": [0.0, 0.0],
+        "Backtest": {
+            "security": ["HK.MHImain", "HK.HHImain"],
+            "lot": [10, 50],
+            "commission": [10.1, 10.1],
+            "slippage": [0.0, 0.0],
         }
     }
+    show_fields = {
+        "Backtest": {
+            "tsv_t": [
+                dict(func=go.Bar, style=dict(marker=dict(color="grey")), pos=2),
+                dict(func=go.Bar, style=dict(marker=dict(color="grey")), pos=2),
+            ],
+            "tsv_m": [
+                dict(func=go.Line, style=dict(marker=dict(color="blue")), pos=2),
+                dict(func=go.Line, style=dict(marker=dict(color="blue")), pos=2),
+            ]
+        }
+    }
+    data = pd.read_csv("results/2023-04-07 03-00-49.823867/result_cta_hkfe.csv")
     plot_signals(
         instruments=instruments,
-        data=pd.read_csv("results/2022-06-01 09-48-35.546702/result.csv"),
-        show_fields={
-            "tsv": dict(func=go.Bar, marker=dict(color="grey")),
-        }
+        data=data,
+        show_fields=show_fields
     )
-    print()
