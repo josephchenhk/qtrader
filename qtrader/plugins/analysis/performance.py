@@ -910,13 +910,12 @@ def plot_pnl_with_category(
     print(f"Saved to {str(Path(result_path).parent)}/pnl_with_category.html")
 
 
-def string_to_numbers(x: Any)->Any:
+def string_to_numbers(x: Any) -> Any:
     return literal_eval(str(x).replace("nan", "None"))
 
 def plot_signals(
         data: pd.DataFrame,
         instruments: Dict[str, Dict[str, List[Any]]],
-        show_fields: Dict[str, Dict[str, List[Any]]] = None,
         save_path: str = None
 ):
     """
@@ -930,20 +929,6 @@ def plot_signals(
     # Convert the data types in data
     for col in data.columns:
         data[col] = data[col].apply(lambda x: string_to_numbers(x))
-    # default to show all columns in data except the followings
-    if show_fields is None:
-        except_fields = ['datetime', 'portfolio_value',
-                         'strategy_portfolio_value',
-                         'action', 'bar_datetime']
-        show_fields = {}
-        for k, v in instruments.items():
-            n = len(instruments[k]['security'])
-            show_fields[k] = {}
-            for f in data.columns:
-                if f in except_fields:
-                    continue
-                show_fields[k][f] = [dict(func=go.Line,
-                    style=dict(marker=dict(color="grey")), pos=1)] * n
     # get latest timestamp
     datetime_ts = [
         try_parsing_datetime(max(dt))
@@ -975,7 +960,7 @@ def plot_signals(
     # different strategy will have different recorded fields
     fields = {
         gw: {
-            sec: {f: None for f in show_fields[gw]}
+            sec: {f: None for f in instruments[gw]['show_fields']}
             for sec in instruments[gw]['security']
         } for gw in instruments
     }
@@ -988,7 +973,7 @@ def plot_signals(
             close_ts = []
             volume_ts = []
             field_ts = {}
-            for field in show_fields[gateway_name]:
+            for field in instruments[gateway_name]['show_fields']:
                 field_ts[field] = []
 
             signals[gateway_name][security] = []
@@ -1008,7 +993,7 @@ def plot_signals(
                     close_ts.append(data["close"][i][gw_idx][idx])
                     volume_ts.append(data["volume"][i][gw_idx][idx])
 
-                    for field in show_fields[gateway_name]:
+                    for field in instruments[gateway_name]['show_fields']:
                         if field not in data.columns:
                             raise ValueError(f"{field} is NOT a column tag in "
                                              f"`data`({data.columns}).")
@@ -1209,9 +1194,17 @@ def plot_signals(
                 marker=dict(color="pink")
             )
 
-            for field in show_fields[gateway_name]:
-                func = show_fields[gateway_name][field][idx]["func"]
-                style = show_fields[gateway_name][field][idx]["style"]
+            for field in instruments[gateway_name]['show_fields']:
+                func = instruments[gateway_name]['show_fields'][field][idx][
+                    "func"]
+                style = instruments[gateway_name]['show_fields'][field][idx][
+                    "style"]
+                style_func = instruments[gateway_name]['show_fields'][field][
+                    idx].get('style_func')
+                if style_func is not None:
+                    for style_field in style_func:
+                        s_func = style_func[style_field]
+                        style[style_field] = s_func(data)
                 fields[gateway_name][security][field] = func(
                     x=datetime_ts,
                     y=field_ts[field],
@@ -1291,14 +1284,16 @@ def plot_signals(
                         )
                 fig.update_xaxes(row=row, col=1, rangeslider_visible=False)
 
-                for field in show_fields[gateway_name]:
-                    if show_fields[gateway_name][field][idx]['pos'] == 1:
+                for field in instruments[gateway_name]['show_fields']:
+                    if instruments[gateway_name]['show_fields'][field][idx][
+                        'pos'] == 1:
                         fig.add_trace(
                             fields[gateway_name][security][field],
                             row=row,
                             col=1,
                         )
-                    elif show_fields[gateway_name][field][idx]['pos'] == 2:
+                    elif instruments[gateway_name]['show_fields'][field][idx][
+                        'pos'] == 2:
                         fig.add_trace(
                             fields[gateway_name][security][field],
                             row=row+1,
