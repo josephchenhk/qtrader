@@ -239,14 +239,14 @@ def is_trading_time(
     _is_trading_time = False
     for session in trading_sessions:
         if session[0].time() <= session[1].time():
-            if session[0].time() <= cur_time <= session[1].time():
+            if session[0].time() <= cur_time < session[1].time():
                 _is_trading_time = True
                 break
         elif session[0].time() > session[1].time():
             if session[0].time() <= cur_time <= Time(23, 59, 59, 999999):
                 _is_trading_time = True
                 break
-            elif Time(0, 0, 0) <= cur_time <= session[1].time():
+            elif Time(0, 0, 0) <= cur_time < session[1].time():
                 _is_trading_time = True
                 break
     return _is_trading_time
