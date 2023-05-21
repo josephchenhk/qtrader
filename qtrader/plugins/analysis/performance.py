@@ -19,9 +19,11 @@ import ast
 from typing import List, Dict, Any
 from datetime import datetime
 from pathlib import Path
+from ast import literal_eval
 
 import pandas as pd
 import numpy as np
+import pyautogui
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.offline as offline
@@ -661,7 +663,8 @@ def plot_pnl_with_category(
         result_path: str,
         category: str = None,
         start: datetime = None,
-        end: datetime = None
+        end: datetime = None,
+
 ):
     """
 
@@ -907,45 +910,486 @@ def plot_pnl_with_category(
     print(f"Saved to {str(Path(result_path).parent)}/pnl_with_category.html")
 
 
-if __name__ == "__main__":
-    # Information provided must be consistent with the corresponding strategy
-    instruments = {
-        "security": {
-            # ["FUT.GC", "FUT.SI", "FUT.CO"], ["HK.MHImain", "HK.HHImain"]
-            "Backtest": ["FUT.GC", "FUT.SI", "FUT.CO"],
-        },
-        "lot": {
-            "Backtest": [100, 5000, 1000],  # [100, 5000, 1000], [10, 50]
-        },
-        "commission": {
-            "Backtest": [1.92, 1.92, 1.92],  # [1.92, 1.92, 1.92]  [10.1, 10.1]
-        },
-        "slippage": {
-            "Backtest": [0.0, 0.0, 0.0],    # [0.0, 0.0, 0.0], [0.0, 0.0]
-        }
+def string_to_numbers(x: Any) -> Any:
+    return literal_eval(str(x).replace("nan", "None"))
+
+def plot_signals(
+        data: pd.DataFrame,
+        instruments: Dict[str, Dict[str, List[Any]]],
+        save_path: str = None
+):
+    """
+    Plot P&L and corresponding signals
+    :param data: backtest resutls
+    :param instruments: dictionary with security information
+    :param show_fields: dictionary specifying fields to be plotted
+    :param save_path: if not None, specify the saving path
+    :return: plotly graph object (Go)
+    """
+    # Convert the data types in data
+    for col in data.columns:
+        data[col] = data[col].apply(lambda x: string_to_numbers(x))
+    # get latest timestamp
+    datetime_ts = [
+        try_parsing_datetime(max(dt))
+        for dt in data["datetime"]
+    ]
+    # sum over gateways
+    portfolio_value_ts = [
+        sum(spv) for spv in data["strategy_portfolio_value"]]
+
+    portfolio_value = go.Line(
+        x=datetime_ts,
+        y=portfolio_value_ts,
+        name=f"Portfoliio Value",
+        marker=dict(color="blue")
+    )
+
+    candlesticks = {
+        gw: {
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
+    volumes = {
+        gw: {
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
+    signals = {
+        gw: {
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
+    actions = {
+        gw: {
+            sec: None for sec in instruments[gw]['security']} for gw in instruments}
+    # different strategy will have different recorded fields
+    fields = {
+        gw: {
+            sec: {f: None for f in instruments[gw]['show_fields']}
+            for sec in instruments[gw]['security']
+        } for gw in instruments
     }
 
-    result_path = (
-        Path(os.path.abspath(__file__)).parent.parent.parent.parent.joinpath(
-            "results/2022-06-01 09-48-35.546702/result.csv")
+    for gw_idx, gateway_name in enumerate(instruments):
+        for idx, security in enumerate(instruments[gateway_name]['security']):
+            open_ts = []
+            high_ts = []
+            low_ts = []
+            close_ts = []
+            volume_ts = []
+            field_ts = {}
+            for field in instruments[gateway_name]['show_fields']:
+                field_ts[field] = []
+
+            signals[gateway_name][security] = []
+            actions[gateway_name][security] = []
+            for i in range(len(data["datetime"])):
+                if (
+                        data["datetime"][i][gw_idx] is not None
+                        and data["open"][i][gw_idx][idx] is not None
+                        and data["high"][i][gw_idx][idx] is not None
+                        and data["low"][i][gw_idx][idx] is not None
+                        and data["close"][i][gw_idx][idx] is not None
+                        and data["volume"][i][gw_idx][idx] is not None
+                ):
+                    open_ts.append(data["open"][i][gw_idx][idx])
+                    high_ts.append(data["high"][i][gw_idx][idx])
+                    low_ts.append(data["low"][i][gw_idx][idx])
+                    close_ts.append(data["close"][i][gw_idx][idx])
+                    volume_ts.append(data["volume"][i][gw_idx][idx])
+
+                    for field in instruments[gateway_name]['show_fields']:
+                        if field not in data.columns:
+                            raise ValueError(f"{field} is NOT a column tag in "
+                                             f"`data`({data.columns}).")
+                        field_ts[field].append(data[field][i][gw_idx][idx])
+
+                    if (
+                            "signal" in data.columns
+                            and data["signal"][i][gw_idx][idx] == 1
+                    ):
+                        x = data["datetime"][i][gw_idx]
+                        y = data["close"][i][gw_idx][idx]
+                        arrowhead = 1
+                        arrowsize = 1
+                        arrowwidth = 2
+                        arrowcolor = 'green'
+                        ax = 0
+                        ay = 30
+                        yanchor = 'top'
+                        text = "Entry Long"
+                    elif (
+                            "signal" in data.columns
+                            and data["signal"][i][gw_idx][idx] == -1
+                    ):
+                        x = data["datetime"][i][gw_idx]
+                        y = data["close"][i][gw_idx][idx]
+                        arrowhead = 1
+                        arrowsize = 1
+                        arrowwidth = 2
+                        arrowcolor = 'red'
+                        ax = 0
+                        ay = -30
+                        yanchor = 'bottom'
+                        text = "Entry Short"
+                    elif (
+                            "signal" in data.columns
+                            and data["signal"][i][gw_idx][idx] == 10
+                    ):
+                        x = data["datetime"][i][gw_idx]
+                        y = data["close"][i][gw_idx][idx]
+                        arrowhead = 1
+                        arrowsize = 1
+                        arrowwidth = 2
+                        arrowcolor = "green"
+                        ax = 0
+                        ay = 30
+                        yanchor = 'top'
+                        text = "Exit Short"
+                    elif (
+                            "signal" in data.columns
+                            and data["signal"][i][gw_idx][idx] == -10
+                    ):
+                        x = data["datetime"][i][gw_idx]
+                        y = data["close"][i][gw_idx][idx]
+                        arrowhead = 1
+                        arrowsize = 1
+                        arrowwidth = 2
+                        arrowcolor = "red"
+                        ax = 0
+                        ay = -30
+                        yanchor = 'bottom'
+                        text = "Exit Long"
+
+                    if (
+                            "signal" in data.columns
+                            and data["signal"][i][gw_idx][idx] in (
+                    1, -1, 10, -10)
+                    ):
+                        annotation_params = dict(
+                            x=x,
+                            y=y,
+                            hovertext=text,
+                            yanchor=yanchor,
+                            showarrow=True,
+                            arrowhead=arrowhead,
+                            arrowsize=arrowsize,
+                            arrowwidth=arrowwidth,
+                            arrowcolor=arrowcolor,
+                            ax=ax,
+                            ay=ay,
+                            align="left",
+                            borderwidth=2,
+                            opacity=1.0,
+                        )
+                        signals[gateway_name][security].append(
+                            annotation_params)
+
+                    if (
+                            "action" in data.columns
+                            and security in data["action"][i][gw_idx]
+                    ):
+                        action_str_list = data["action"][i][gw_idx].split(
+                            "|")
+                        action_str_list = [
+                            a for a in action_str_list if a != ""]
+                        action_list = [
+                            ast.literal_eval(a) for a in action_str_list]
+                        for action in action_list:
+                            if action["sec"] != security:
+                                continue
+                            if (
+                                    action["side"] == "LONG"
+                                    and action["offset"] == "OPEN"
+                            ):
+                                x = data["datetime"][i][gw_idx]
+                                y = data["close"][i][gw_idx][idx]
+                                bgcolor = "#CFECEC"
+                                bordercolor = 'green'
+                                arrowhead = 1
+                                arrowsize = 1
+                                arrowwidth = 2
+                                ax = -20
+                                ay = 30
+                                yanchor = 'top'
+                                text = "Entry Long"
+                            elif (
+                                    action["side"] == "SHORT"
+                                    and action["offset"] == "OPEN"
+                            ):
+                                x = data["datetime"][i][gw_idx]
+                                y = data["close"][i][gw_idx][idx]
+                                bgcolor = "#ffb3b3"
+                                bordercolor = 'red'
+                                arrowhead = 1
+                                arrowsize = 1
+                                arrowwidth = 2
+                                ax = 20
+                                ay = -30
+                                yanchor = 'bottom'
+                                text = "Entry Short"
+                            elif (
+                                    action["side"] == "LONG"
+                                    and action["offset"] == "CLOSE"
+                            ):
+                                x = data["datetime"][i][gw_idx]
+                                y = data["close"][i][gw_idx][idx]
+                                bgcolor = "#CFECEC"
+                                bordercolor = 'green'
+                                arrowhead = 1
+                                arrowsize = 1
+                                arrowwidth = 2
+                                ax = -20
+                                ay = 30
+                                yanchor = 'top'
+                                text = "Exit Short"
+                            elif (
+                                    action["side"] == "SHORT"
+                                    and action["offset"] == "CLOSE"
+                            ):
+                                x = data["datetime"][i][gw_idx]
+                                y = data["close"][i][gw_idx][idx]
+                                bgcolor = "#ffb3b3"
+                                bordercolor = 'red'
+                                arrowhead = 1
+                                arrowsize = 1
+                                arrowwidth = 2
+                                ax = 20
+                                ay = -30
+                                yanchor = 'bottom'
+                                text = "Exit Long"
+
+                            action_annotation_params = dict(
+                                x=x,
+                                y=y,
+                                text=text,
+                                yanchor=yanchor,
+                                showarrow=True,
+                                arrowhead=arrowhead,
+                                arrowsize=arrowsize,
+                                arrowwidth=arrowwidth,
+                                arrowcolor="#636363",
+                                ax=ax,
+                                ay=ay,
+                                font=dict(
+                                    size=15,
+                                    color=bordercolor,
+                                    family="Courier New, monospace"),
+                                align="left",
+                                bordercolor=bordercolor,
+                                borderwidth=2,
+                                bgcolor=bgcolor,
+                                opacity=1.0,
+                            )
+                            actions[gateway_name][security].append(
+                                action_annotation_params)
+
+            candlesticks[gateway_name][security] = go.Candlestick(
+                x=datetime_ts,
+                open=open_ts,
+                high=high_ts,
+                low=low_ts,
+                close=close_ts,
+                name=f"OHLC_{security}"
+            )
+            volumes[gateway_name][security] = go.Bar(
+                x=datetime_ts,
+                y=volume_ts,
+                name=f"Volume_{security}",
+                marker=dict(color="pink")
+            )
+
+            for field in instruments[gateway_name]['show_fields']:
+                func = instruments[gateway_name]['show_fields'][field][idx][
+                    "func"]
+                style = instruments[gateway_name]['show_fields'][field][idx][
+                    "style"]
+                style_func = instruments[gateway_name]['show_fields'][field][
+                    idx].get('style_func')
+                if style_func is not None:
+                    for style_field in style_func:
+                        s_func = style_func[style_field]
+                        style[style_field] = s_func(data)
+                fields[gateway_name][security][field] = func(
+                    x=datetime_ts,
+                    y=field_ts[field],
+                    name=f"{field}_{gateway_name}_{security}",
+                    **style
+                )
+
+    vertical_spacing = 0.05
+    num_plots = 1  # 1 for portfolio value
+    for k, v in instruments.items():
+        num_plots += len(v['security'])  # k for gateway, v for list of securities
+    row_height = (1 - vertical_spacing * num_plots) / num_plots
+    row_heights = []
+    row_titles = []
+    row_heights.append(row_height)
+    row_titles.append("Portfolio Value")
+    for gateway_name in instruments:
+        for security in instruments[gateway_name]['security']:
+            ohlc_height = row_height * 0.7
+            v_height = row_height * 0.3
+            row_heights.extend([ohlc_height, v_height])
+            row_titles.extend(
+                [f"OHLC_{gateway_name}_{security}",
+                 f"Volume_{gateway_name}_{security}"])
+    fig = make_subplots(
+        rows=(num_plots - 1) * 2 + 1,
+        # 1 for portfolio_value; 2 for ohlc and volume respectively
+        cols=1,
+        shared_xaxes=False,
+        vertical_spacing=vertical_spacing,
+        subplot_titles=row_titles,
+        row_heights=row_heights,
     )
-    stats_path = result_path.parent.joinpath("stats.xlsx")
 
-    perf_cta = PerformanceCTA(
-        instruments=instruments,
-        result_path=result_path,
+    fig.add_trace(
+        portfolio_value,
+        row=1,
+        col=1
     )
-    perf_cta.calc_statistics()
-    perf_cta.save()
+    fig.update_xaxes(row=1, col=1, rangeslider_visible=False)
 
-    plot_monthly_pnl(stats_path=stats_path, target="total_trades")
+    has_ohlcv = True
+    if has_ohlcv:
+        # gw_idx: 0, 1
+        # idx: 0, 1, 2
+        # gw_idx=0, idx=0: row=2=idx*2+2
+        # gw_idx=0, idx=1: row=4=idx*2+2
+        # gw_idx=0, idx=2: row=6=idx*2+2
+        # gw_idx=1, idx=0: row=8=3*2+idx*2+2=len(instruments[list(instruments.keys())[gw_idx-1]])*2+idx*2+2
+        # gw_idx=1, idx=1:
+        # row=10=3*2+idx*2+2=len(instruments[list(instruments.keys())[gw_idx-1]])*2+idx*2+2
+        for gw_idx, gateway_name in enumerate(instruments):
+            for idx, security in enumerate(instruments[gateway_name]['security']):
+                if gw_idx == 0:
+                    row = idx * 2 + 2
+                else:
+                    row = len(instruments[list(instruments.keys())[
+                        gw_idx - 1]]) * 2 + idx * 2 + 2
+                fig.add_trace(
+                    candlesticks[gateway_name][security],
+                    row=row,
+                    col=1,
+                )
+                if signals[gateway_name][security] is not None:
+                    for annotation_param in signals[gateway_name][security]:
+                        fig.add_annotation(
+                            row=row,
+                            col=1,
+                            **annotation_param
+                        )
+                if actions[gateway_name][security] is not None:
+                    for act_annotation_param in actions[gateway_name][security]:
+                        fig.add_annotation(
+                            row=row,
+                            col=1,
+                            **act_annotation_param
+                        )
+                fig.update_xaxes(row=row, col=1, rangeslider_visible=False)
 
-    plot_pnl(result_path=result_path, freq="daily")
+                for field in instruments[gateway_name]['show_fields']:
+                    if instruments[gateway_name]['show_fields'][field][idx][
+                        'pos'] == 1:
+                        fig.add_trace(
+                            fields[gateway_name][security][field],
+                            row=row,
+                            col=1,
+                        )
+                    elif instruments[gateway_name]['show_fields'][field][idx][
+                        'pos'] == 2:
+                        fig.add_trace(
+                            fields[gateway_name][security][field],
+                            row=row+1,
+                            col=1,
+                        )
 
-    plot_pnl_with_category(
+                fig.update_xaxes(
+                    row=row + 1, col=1, rangeslider_visible=False)
+
+    fig.layout.update(
+        title="Live trade monitor",
+    )
+
+    width, height = pyautogui.size()
+    fig.layout.height = (height // 3) * num_plots
+    fig.layout.width = width
+
+    fig.update(layout_xaxis_rangeslider_visible=False)
+
+    fig.layout.yaxis2.showgrid = False
+
+    # fig.show()
+    if save_path:
+        offline.plot(
+            fig,
+            filename=f"{save_path}/signals.html")
+        print(f"Saved to {save_path}/signals.html")
+    return fig
+
+
+if __name__ == "__main__":
+    # # Information provided must be consistent with the corresponding strategy
+    # instruments = {
+    #     "security": {
+    #         # ["FUT.GC", "FUT.SI", "FUT.CO"], ["HK.MHImain", "HK.HHImain"]
+    #         "Backtest": ["FUT.GC", "FUT.SI", "FUT.CO"],
+    #     },
+    #     "lot": {
+    #         "Backtest": [100, 5000, 1000],  # [100, 5000, 1000], [10, 50]
+    #     },
+    #     "commission": {
+    #         "Backtest": [1.92, 1.92, 1.92],  # [1.92, 1.92, 1.92]  [10.1, 10.1]
+    #     },
+    #     "slippage": {
+    #         "Backtest": [0.0, 0.0, 0.0],    # [0.0, 0.0, 0.0], [0.0, 0.0]
+    #     }
+    # }
+
+    # result_path = (
+    #     Path(os.path.abspath(__file__)).parent.parent.parent.parent.joinpath(
+    #         "results/2022-06-01 09-48-35.546702/result.csv")
+    # )
+    # stats_path = result_path.parent.joinpath("stats.xlsx")
+    #
+    # perf_cta = PerformanceCTA(
+    #     instruments=instruments,
+    #     result_path=result_path,
+    # )
+    # perf_cta.calc_statistics()
+    # perf_cta.save()
+    #
+    # plot_monthly_pnl(stats_path=stats_path, target="total_trades")
+    #
+    # plot_pnl(result_path=result_path, freq="daily")
+    #
+    # plot_pnl_with_category(
+    #     instruments=instruments,
+    #     result_path=result_path,
+    #     category="action",
+    #     start=datetime(2022, 3, 4, 9, 30, 0),
+    #     end=datetime(2022, 3, 11, 23, 0, 0)
+    # )
+
+    instruments = {
+        "Backtest": {
+            "security": ["HK.MHImain", "HK.HHImain"],
+            "lot": [10, 50],
+            "commission": [10.1, 10.1],
+            "slippage": [0.0, 0.0],
+        }
+    }
+    show_fields = {
+        "Backtest": {
+            "tsv_t": [
+                dict(func=go.Bar, style=dict(marker=dict(color="grey")), pos=2),
+                dict(func=go.Bar, style=dict(marker=dict(color="grey")), pos=2),
+            ],
+            "tsv_m": [
+                dict(func=go.Line, style=dict(marker=dict(color="blue")), pos=2),
+                dict(func=go.Line, style=dict(marker=dict(color="blue")), pos=2),
+            ]
+        }
+    }
+    data = pd.read_csv("results/2023-04-07 03-00-49.823867/result_cta_hkfe.csv")
+    plot_signals(
         instruments=instruments,
-        result_path=result_path,
-        category="action",
-        start=datetime(2022, 3, 4, 9, 30, 0),
-        end=datetime(2022, 3, 11, 23, 0, 0)
+        data=data,
+        show_fields=show_fields
     )
