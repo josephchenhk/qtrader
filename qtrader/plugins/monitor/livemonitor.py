@@ -23,6 +23,7 @@ import dash
 from pathlib import Path
 import pickle
 
+from monitor_config import instruments
 from qtrader_config import TIME_STEP
 from qtrader_config import LOCAL_PACKAGE_PATHS
 from qtrader_config import ADD_LOCAL_PACKAGE_PATHS_TO_SYSPATH
