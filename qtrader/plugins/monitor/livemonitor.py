@@ -23,6 +23,7 @@ import dash
 from pathlib import Path
 import pickle
 
+sys.path.insert(0, os.getcwd())
 from monitor_config import instruments
 from qtrader_config import TIME_STEP
 from qtrader_config import LOCAL_PACKAGE_PATHS
