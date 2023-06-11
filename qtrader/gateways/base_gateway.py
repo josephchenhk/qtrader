@@ -32,6 +32,7 @@ from qtrader.core.order import Order
 from qtrader.core.position import PositionData
 from qtrader.core.security import Security
 from qtrader.core.utility import BlockingDict
+from qtrader.core.utility import is_trading_time
 from qtrader_config import GATEWAYS
 
 
@@ -50,6 +51,12 @@ class BaseGateway(ABC):
             gateway_name: str = "Backtest",
             **kwargs
     ):
+        """
+        Base gateway
+        :param securities: securities
+        :param gateway_name: name of the gateway
+        :param kwargs:
+        """
         self._market_datetime = None
         self._trade_mode = None
         self.securities = securities
@@ -88,7 +95,8 @@ class BaseGateway(ABC):
                         f"{security.code} is NOT available in "
                         f"{Path(gateway_path).joinpath('instrument_cfg.yaml')}"
                     )
-                    self.trading_sessions[security.code] = instrument_cfg[security.code]["sessions"]
+                    self.trading_sessions[security.code] = instrument_cfg[
+                        security.code]["sessions"]
 
     def close(self):
         """In backtest, no need to do anything"""
@@ -105,21 +113,8 @@ class BaseGateway(ABC):
             cur_time: Time
     ) -> bool:
         """whether the security is whitin trading time"""
-        sessions = self.trading_sessions[security.code]
-        _is_trading_time = False
-        for session in sessions:
-            if session[0].time() <= session[1].time():
-                if session[0].time() <= cur_time <= session[1].time():
-                    _is_trading_time = True
-                    break
-            elif session[0].time() > session[1].time():
-                if session[0].time() <= cur_time <= Time(23, 59, 59, 999999):
-                    _is_trading_time = True
-                    break
-                elif Time(0, 0, 0) <= cur_time <= session[1].time():
-                    _is_trading_time = True
-                    break
-        return _is_trading_time
+        trading_sessions = self.trading_sessions[security.code]
+        return is_trading_time(cur_time, trading_sessions)
 
     def is_trading_time(self, cur_datetime: datetime) -> bool:
         """Whether the gateway is within trading time (a gateway
