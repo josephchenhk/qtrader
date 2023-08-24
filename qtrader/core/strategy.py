@@ -17,6 +17,7 @@ this file. If not, please write to: josephchenhk@gmail.com
 
 from typing import List, Dict, Any
 from datetime import datetime
+from functools import wraps
 
 from qtrader.core.balance import AccountBalance
 from qtrader.core.data import Bar
@@ -25,6 +26,16 @@ from qtrader.core.portfolio import Portfolio
 from qtrader.core.position import Position
 from qtrader.core.security import Security
 
+
+def init_portfolio_and_params(init_strategy):
+    @wraps(init_strategy)
+    def wrapper(self, *args, **kwargs):
+        # initialize portfolio (account balance and position) and params
+        self._init_strategy()
+        # custom strategy initialization function
+        result = init_strategy(self, *args, **kwargs)
+        return result
+    return wrapper
 
 class BaseStrategy:
     """Base class for strategy
@@ -40,7 +51,8 @@ class BaseStrategy:
             engine: Engine,
             strategy_trading_sessions: List[List[datetime]] = None,
             init_strategy_account_balance: Dict[str, AccountBalance] = None,
-            init_strategy_position: Dict[str, Position] = None
+            init_strategy_position: Dict[str, Position] = None,
+            init_strategy_params: Dict[str, Dict[str, Dict]] = None
     ):
         self.securities = securities
         self.engine = engine
@@ -48,28 +60,32 @@ class BaseStrategy:
         self.strategy_version = strategy_version
         self.strategy_trading_sessions = strategy_trading_sessions
         if init_strategy_account_balance is None:
-            init_strategy_account_balance = {gw: AccountBalance(cash=0.0) for gw in securities}
+            init_strategy_account_balance = {
+                gw: AccountBalance(cash=0.0) for gw in securities}
         if init_strategy_position is None:
             init_strategy_position = {gw: Position() for gw in securities}
-        self.init_strategy_portfolio(
-            init_strategy_account_balance=init_strategy_account_balance,
-            init_strategy_position=init_strategy_position
-        )
+        if init_strategy_params is None:
+            init_strategy_params = {gw: {} for gw in securities}
+        self._init_strategy_account_balance = init_strategy_account_balance
+        self._init_strategy_position = init_strategy_position
+        self._init_strategy_params = init_strategy_params
+
         # Record the action at each time step
         self._actions = {gateway_name: "" for gateway_name in engine.gateways}
         # Record bar data at each time step
         self._data = {
-            gateway_name: {security: None for security in securities.get(gateway_name, [])}
-            for gateway_name in engine.gateways
+            gateway_name: {
+                security: None for security in securities.get(gateway_name, [])
+            } for gateway_name in engine.gateways
         }
 
-    def init_strategy_portfolio(
-            self,
-            init_strategy_account_balance: Dict[str, AccountBalance],
-            init_strategy_position: Dict[str, Position]
-    ):
-        """Portfolio information for a specific strategy"""
+    def _init_strategy(self):
+        """Initialize portfolio information for a specific strategy"""
+        init_strategy_account_balance = self._init_strategy_account_balance
+        init_strategy_position = self._init_strategy_position
+        init_strategy_params = self._init_strategy_params
         self.portfolios = {}
+        self.params = {}
         for gateway_name in self.securities:
             gateway = self.engine.gateways[gateway_name]
             account_balance = init_strategy_account_balance[gateway_name]
@@ -81,6 +97,14 @@ class BaseStrategy:
             )
             self.portfolios[gateway_name] = portfolio
 
+            self.params[gateway_name] = {}
+            for sec_code in init_strategy_params[gateway_name]:
+                self.params[gateway_name][sec_code] = {}
+                for param in init_strategy_params[gateway_name][sec_code]:
+                    self.params[gateway_name][sec_code][param] = \
+                        init_strategy_params[gateway_name][sec_code][param]
+
+    @init_portfolio_and_params
     def init_strategy(self, *args, **kwargs):
         raise NotImplementedError(
             "init_strategy has not been implemented yet.")
