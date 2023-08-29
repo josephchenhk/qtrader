@@ -95,3 +95,8 @@ IGNORE_TIMESTEP_OVERFLOW = False
 TELEGRAM_TOKEN = ""
 TELEGRAM_CHAT_ID = 1
 DATA_FFILL = True
+
+BAR_CONVENTION = {
+    'FUT.GC': 'end',
+    'FUT.SI': 'end'
+}
