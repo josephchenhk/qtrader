@@ -29,7 +29,7 @@ import pandas as pd
 from qtrader.core.constants import Exchange
 from qtrader.core.security import Stock, Security
 from qtrader.core.utility import get_kline_dfield_from_seconds
-from qtrader_config import DATA_PATH, TIME_STEP
+from qtrader_config import DATA_PATH, TIME_STEP, BAR_CONVENTION
 
 
 @dataclass
@@ -247,6 +247,8 @@ def _get_data(
             f"There is no historical data for {security.code} within time range"
             f": [{start} - {end}]!")
     full_data = full_data.sort_values(by=[time_col])
+    if BAR_CONVENTION.get(security.code) == 'start':
+        start -= timedelta(minutes=int(TIME_STEP/60/1000))
     start_str = start.strftime("%Y-%m-%d %H:%M:%S")
     end_str = end.strftime("%Y-%m-%d %H:%M:%S")
     full_data = full_data[(full_data[time_col] >= start_str)

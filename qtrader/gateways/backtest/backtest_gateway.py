@@ -24,7 +24,8 @@ from dateutil.relativedelta import relativedelta
 
 import pandas as pd
 
-from qtrader_config import DATA_PATH, DATA_MODEL, TIME_STEP, DATA_FFILL
+from qtrader_config import (
+    DATA_PATH, DATA_MODEL, TIME_STEP, DATA_FFILL, BAR_CONVENTION)
 from qtrader.core.balance import AccountBalance
 from qtrader.core.constants import TradeMode, OrderStatus, Direction, OrderType
 from qtrader.core.data import Quote
@@ -337,43 +338,88 @@ class BacktestGateway(BaseGateway):
             dfields = [kwargs["dfield"]]
         else:
             dfields = DATA_PATH
-        data_it = dict()
-        data_prev = dict()
-        data_next = dict()
-        for dfield in dfields:
-            data_it[dfield] = self.data_iterators[security][dfield]
-            data_prev[dfield] = self.prev_cache[security][dfield]
-            data_next[dfield] = self.next_cache[security][dfield]
 
-            if cur_datetime > self.end:
-                pass
+        if (
+                BAR_CONVENTION.get(security.code)
+                and BAR_CONVENTION[security.code] == 'start'
+        ):
+            data_it = dict()
+            data_prev = dict()
+            data_next = dict()
+            for dfield in dfields:
+                data_it[dfield] = self.data_iterators[security][dfield]
+                data_prev[dfield] = self.prev_cache[security][dfield]
+                data_next[dfield] = self.next_cache[security][dfield]
 
-            elif (data_prev[dfield] is None) and (data_next[dfield] is None):
-                data = next(data_it[dfield])
-                if data.datetime > cur_datetime:
-                    self.next_cache[security][dfield] = data
+                if cur_datetime >= self.end:
+                    pass
+
+                elif (data_prev[dfield] is None) and (data_next[dfield] is None):
+                    data = next(data_it[dfield])
+                    if data.datetime >= cur_datetime:
+                        self.next_cache[security][dfield] = data
+                    else:
+                        while data.datetime < cur_datetime:
+                            self.prev_cache[security][dfield] = data
+                            data = next(data_it[dfield])
+                        self.next_cache[security][dfield] = data
                 else:
-                    while data.datetime <= cur_datetime:
-                        self.prev_cache[security][dfield] = data
-                        data = next(data_it[dfield])
-                    self.next_cache[security][dfield] = data
+                    if self.next_cache[security][dfield].datetime < cur_datetime:
+                        self.prev_cache[security][dfield] = self.next_cache[security][dfield]
+                        try:
+                            data = next(data_it[dfield])
+                            while data.datetime < cur_datetime:
+                                self.prev_cache[security][dfield] = data
+                                data = next(data_it[dfield])
+                            self.next_cache[security][dfield] = data
+                        except StopIteration:
+                            pass
 
-            else:
-                if self.next_cache[security][dfield].datetime <= cur_datetime:
-                    self.prev_cache[security][dfield] = self.next_cache[security][dfield]
-                    try:
-                        data = next(data_it[dfield])
+            self.market_datetime = cur_datetime
+            if len(dfields) == 1:
+                return self.prev_cache[security][dfield]
+            return self.prev_cache[security]
+
+        else:  # BAR_CONVENTION='end' as default
+            data_it = dict()
+            data_prev = dict()
+            data_next = dict()
+            for dfield in dfields:
+                data_it[dfield] = self.data_iterators[security][dfield]
+                data_prev[dfield] = self.prev_cache[security][dfield]
+                data_next[dfield] = self.next_cache[security][dfield]
+
+                if cur_datetime > self.end:
+                    pass
+
+                elif (data_prev[dfield] is None) and (
+                        data_next[dfield] is None):
+                    data = next(data_it[dfield])
+                    if data.datetime > cur_datetime:
+                        self.next_cache[security][dfield] = data
+                    else:
                         while data.datetime <= cur_datetime:
                             self.prev_cache[security][dfield] = data
                             data = next(data_it[dfield])
                         self.next_cache[security][dfield] = data
-                    except StopIteration:
-                        pass
+                else:
+                    if self.next_cache[security][
+                        dfield].datetime <= cur_datetime:
+                        self.prev_cache[security][dfield] = \
+                        self.next_cache[security][dfield]
+                        try:
+                            data = next(data_it[dfield])
+                            while data.datetime <= cur_datetime:
+                                self.prev_cache[security][dfield] = data
+                                data = next(data_it[dfield])
+                            self.next_cache[security][dfield] = data
+                        except StopIteration:
+                            pass
 
-        self.market_datetime = cur_datetime
-        if len(dfields) == 1:
-            return self.prev_cache[security][dfield]
-        return self.prev_cache[security]
+            self.market_datetime = cur_datetime
+            if len(dfields) == 1:
+                return self.prev_cache[security][dfield]
+            return self.prev_cache[security]
 
     def place_order(self, order: Order) -> str:
         """In backtest, simply assume all orders are completely filled."""
