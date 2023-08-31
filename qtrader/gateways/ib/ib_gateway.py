@@ -151,7 +151,7 @@ class IbAPI(IbWrapper, IbClient):
             count: int
     ):
         bar_interval = self.gateway.get_bar_interval_from_ib_bars_reqid(reqId)
-        if "min" not in bar_interval:
+        if "Min" not in bar_interval:
             raise ValueError(f"bar_interval={bar_interval} is NOT valid!")
         security = self.gateway.get_security_from_ib_bars_reqid(reqId)
         # Once a 5s bar is received, the request can be considered successful
@@ -170,17 +170,17 @@ class IbAPI(IbWrapper, IbClient):
             volume=int(volume)
         )
         # print(bar)
-        self.gateway.ib_bars["5sec"][security].append(bar)
-        self.gateway.ib_bars_num["5sec"][security] += 1
+        self.gateway.ib_bars["5Sec"][security].append(bar)
+        self.gateway.ib_bars_num["5Sec"][security] += 1
 
-        bar_interval_mins = int(bar_interval.replace("min", ""))
+        bar_interval_mins = int(bar_interval.replace("Min", ""))
         num_5s_bars = bar_interval_mins * 12
         if (
                 bar_time.second == 0
                 and bar_time.minute % bar_interval_mins == 0
                 # and self.gateway.ib_bars_num["5sec"][security] >= num_5s_bars
         ):
-            bars = self.gateway.ib_bars["5sec"][security][-num_5s_bars:]
+            bars = self.gateway.ib_bars["5Sec"][security][-num_5s_bars:]
 
             # [Comment out the assertation]:
             # We give up a rigorous check for the bars, as we think an update
@@ -201,8 +201,8 @@ class IbAPI(IbWrapper, IbClient):
                 volume=get_volume(bars))
             self.gateway.ib_bars[bar_interval][security].append(
                 consolidated_bar)
-            self.gateway.ib_bars["5sec"][security] = []
-            self.gateway.ib_bars_num["5sec"][security] = 0
+            self.gateway.ib_bars["5Sec"][security] = []
+            self.gateway.ib_bars_num["5Sec"][security] = 0
             # Notify the threads that are waiting for ib_bars_done
             self.gateway.ib_bars_done[bar_interval][security].set()
 
@@ -492,8 +492,8 @@ class IbGateway(BaseGateway):
         # key:Security, value:int (reqId)
         self.ib_contractdetails_reqid = {s: None for s in securities}
 
-        bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
-        bar_req = ["5sec", bar_interval, "1day"]
+        bar_interval = f"{round(TIME_STEP / 60. / 1000.)}Min"
+        bar_req = ["5Sec", bar_interval, "1Day"]
         self.ib_bars_done = {f: {s: threading.Event()
                                  for s in self.securities} for f in bar_req}
         self.ib_bars_req_done = {f: {s: threading.Event()
@@ -659,13 +659,14 @@ class IbGateway(BaseGateway):
     ) -> int:
         """Request historical bars"""
         queryTime = "" if update else datetime.now().strftime(
-            "%Y%m%d %H:%M:%S Asia/Shanghai")
-        if "min" in bar_interval:
-            bar_interval_num = int(bar_interval.replace("min", ""))
+            "%Y%m%d %H:%M:%S Asia/Hong_Kong")
+        if "Min" in bar_interval:
+            bar_interval_num = int(bar_interval.replace("Min", ""))
             assert bar_interval_num in (1, 2, 3, 5, 10, 15, 20, 30), (
                 f"{bar_interval} is NOT a valid bar size!"
             )
-            bar_size = f"{bar_interval_num} mins" if bar_interval_num > 1 else f"{bar_interval_num} min"
+            bar_size = f"{bar_interval_num} mins" \
+                if bar_interval_num > 1 else f"{bar_interval_num} min"
             durationStr = f"{bar_num * bar_interval_num * 60} S"
 
             # Blocking here
@@ -687,8 +688,8 @@ class IbGateway(BaseGateway):
                 keepUpToDate=update,  # if True, endDateTime can not be specified
                 chartOptions=[])
             return reqId
-        elif "day" in bar_interval:
-            bar_interval_num = int(bar_interval.replace("day", ""))
+        elif "Day" in bar_interval:
+            bar_interval_num = int(bar_interval.replace("Day", ""))
             assert bar_interval_num in (1, ), (
                 f"{bar_interval} is NOT a valid bar size!"
             )
@@ -797,6 +798,7 @@ class IbGateway(BaseGateway):
                     # Construct vague contract
                     ib_contract = generate_ib_contract(security)
                     # Get accurate contract
+                    self.ib_contractdetails_done[security].clear()
                     reqId = self.req_contract_details(
                         ib_contract=ib_contract,
                         security=security
@@ -823,6 +825,7 @@ class IbGateway(BaseGateway):
             ib_contract = self.get_ib_contract_from_security(security)
 
             # Request market data (quote and orderbook)
+            self.ib_quotes_done[security].clear()
             reqId = self.req_market_data(
                 ib_contract=ib_contract,
                 security=security
@@ -832,9 +835,10 @@ class IbGateway(BaseGateway):
                 print(f"[{reqId}]Subscribed market data for {security.code}")
 
             # Read bar interval from config file
-            bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
+            bar_interval = f"{round(TIME_STEP / 60. / 1000.)}Min"
 
             # Request hist bar data
+            self.ib_hist_bars_done[bar_interval][security].clear()
             reqId = self.req_hist_bars(
                 ib_contract=ib_contract,
                 security=security,
@@ -853,6 +857,7 @@ class IbGateway(BaseGateway):
             print(f"[{reqId}]Cancelled hist bars for {security.code}")
 
             # Request realtime bar data
+            self.ib_bars_req_done[bar_interval][security].clear()
             reqId = self.req_realtime_bars(
                 ib_contract=ib_contract,
                 security=security,
@@ -868,7 +873,7 @@ class IbGateway(BaseGateway):
     ) -> List[Bar]:
         """Get recent historical OHLCVs"""
         if bar_interval is None:
-            bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
+            bar_interval = f"{round(TIME_STEP / 60. / 1000.)}Min"
         num_bars = self.num_of_min_bar
         recent_bars = self.ib_bars[bar_interval][security][-num_bars:]
         return recent_bars
@@ -880,7 +885,7 @@ class IbGateway(BaseGateway):
     ) -> Bar:
         """Get most recent historical OHLCV"""
         if bar_interval is None:
-            bar_interval = f"{round(TIME_STEP / 60. / 1000.)}min"
+            bar_interval = f"{round(TIME_STEP / 60. / 1000.)}Min"
         num_bars = self.num_of_min_bar
         recent_bars = self.ib_bars[bar_interval][security][-num_bars:]
         return recent_bars[-1]
@@ -1067,72 +1072,89 @@ class IbGateway(BaseGateway):
             periods: int,
             freq: str,
             cur_datetime: datetime,
-            daily_open_time: Time = None,
-            daily_close_time: Time = None,
+            trading_sessions: List[List[datetime]] = None,
+            mode: str = "direct"
     ) -> List[Bar]:
         """request historical bar data."""
         # Check params
-        if freq == "1Day" and (
-                daily_open_time is None or daily_close_time is None):
-            raise ValueError(
-                "Parameters daily_open_time and daily_close_time are "
-                f"mandatory if freq={freq}.")
-
-        # return historical bar data
-        if freq == "1Min":
-            return _req_historical_bars_ib_1min(
-                security=security,
-                periods=periods,
-                gateway=self
-            )
-        elif freq == "1Day":
-            return _req_historical_bars_ib_1day(
-                security=security,
-                periods=periods,
-                gateway=self
-            )
-
         # freq is not valid
         FREQ_ALLOWED = ("1Day", "1Min")
-        raise ValueError(
-            f"Parameter freq={freq} is Not supported. Only {FREQ_ALLOWED} "
-            "are allowed.")
-
-
-def _req_historical_bars_ib_1min(
-    security: Security,
-    periods: int,
-    gateway: BaseGateway
-) -> List[Bar]:
-    if gateway.ib_bars_num["1min"][security] is None:
-        ib_contract = gateway.get_ib_contract_from_security(
-            security)
-        gateway.req_bar(
-            ib_contract,
-            security,
-            "1min",
-            periods,
-            False  # if set True, will block receiving data in reqAccountUpdates
+        assert freq in FREQ_ALLOWED, (
+            f"Parameter freq={freq} is Not supported. "
+            f"Only {FREQ_ALLOWED} are allowed."
         )
-    return gateway.get_recent_bars(security, "1min")
+        if freq == "1Day" and trading_sessions is None:
+            raise ValueError(
+                f"Parameters trading_sessions is mandatory if freq={freq}.")
 
-
-def _req_historical_bars_ib_1day(
-    security: Security,
-    periods: int,
-    gateway: BaseGateway,
-) -> List[Bar]:
-    if gateway.ib_bars_num["1day"][security] is None:
-        ib_contract = gateway.get_ib_contract_from_security(
-            security)
-        gateway.req_bar(
-            ib_contract,
-            security,
-            "1day",
-            periods,
-            False
+        # return historical bar data
+        ib_contract = self.get_ib_contract_from_security(security)
+        self.ib_hist_bars_done[freq][security].clear()
+        reqId = self.req_hist_bars(
+            ib_contract=ib_contract,
+            security=security,
+            bar_interval=freq,
+            bar_num=periods,
+            update=False
         )
-    return gateway.get_recent_bars(security, "1day")
+        if self.ib_hist_bars_done[freq][security].wait():
+            print(f"[{reqId}]Subscribed hist bars for {security.code}")
+
+        self.api.cancelHistoricalData(reqId=reqId)
+        self.ib_hist_bars_reqid[freq][security] = None
+        self.ib_hist_bars_num[freq][security] = 0
+        self.ib_bars[freq][security] = self.ib_hist_bars[freq][security][:]
+        print(f"[{reqId}]Cancelled hist bars for {security.code}")
+        return self.ib_bars[freq][security]
+
+        # if freq == "1Min":
+        #     return _req_historical_bars_ib_1min(
+        #         security=security,
+        #         periods=periods,
+        #         gateway=self
+        #     )
+        # elif freq == "1Day":
+        #     return _req_historical_bars_ib_1day(
+        #         security=security,
+        #         periods=periods,
+        #         gateway=self
+        #     )
+
+
+# def _req_historical_bars_ib_1min(
+#     security: Security,
+#     periods: int,
+#     gateway: BaseGateway
+# ) -> List[Bar]:
+#     if gateway.ib_bars_num["1min"][security] is None:
+#         ib_contract = gateway.get_ib_contract_from_security(
+#             security)
+#         gateway.req_hist_bars(
+#             ib_contract,
+#             security,
+#             "1min",
+#             periods,
+#             False  # if set True, will block receiving data in reqAccountUpdates
+#         )
+#     return gateway.get_recent_bars(security, "1min")
+#
+#
+# def _req_historical_bars_ib_1day(
+#     security: Security,
+#     periods: int,
+#     gateway: BaseGateway,
+# ) -> List[Bar]:
+#     if gateway.ib_bars_num["1day"][security] is None:
+#         ib_contract = gateway.get_ib_contract_from_security(
+#             security)
+#         gateway.req_hist_bars(
+#             ib_contract,
+#             security,
+#             "1day",
+#             periods,
+#             False
+#         )
+#     return gateway.get_recent_bars(security, "1day")
 
 
 def get_ib_security_type(security: Security) -> str:
@@ -1152,7 +1174,8 @@ def get_ib_currency(security: Security) -> str:
     elif security.exchange == Exchange.IDEALPRO:
         base_currency, quote_currency = security.code.split(".")
         return quote_currency
-    elif security.exchange == Exchange.NYMEX:
+    elif security.exchange in (Exchange.NYMEX, Exchange.COMEX, Exchange.CBOT,
+                               Exchange.CME):
         return "USD"
     elif security.exchange == Exchange.SMART:
         return "USD"
@@ -1169,6 +1192,12 @@ def get_ib_exchange(security: Security) -> str:
         return "SMART"
     elif security.exchange == Exchange.NYMEX:
         return "NYMEX"
+    elif security.exchange == Exchange.COMEX:
+        return "COMEX"
+    elif security.exchange == Exchange.CME:
+        return "CME"
+    elif security.exchange == Exchange.CBOT:
+        return "CBOT"
     else:
         raise ValueError(f"Exchange of {security} not supported in IB yet!")
 
