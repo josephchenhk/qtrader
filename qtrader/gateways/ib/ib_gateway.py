@@ -17,6 +17,7 @@ this file. If not, please write to: josephchenhk@gmail.com
 
 import pickle
 import threading
+import time
 from dataclasses import replace
 from datetime import datetime
 from typing import Dict, List, Any
@@ -454,6 +455,10 @@ class IbAPI(IbWrapper, IbClient):
             commissionReport.commission
         )
 
+    def marketDataType(self, reqId: TickerId, marketDataType: int):
+        super().marketDataType(reqId, marketDataType)
+        print("MarketDataType. ReqId:", reqId, "Type:", marketDataType)
+
 
 class IbGateway(BaseGateway):
 
@@ -787,6 +792,8 @@ class IbGateway(BaseGateway):
     def subscribe(self):
         # "REALTIME", "FROZEN", "DELAYED", "DELAYED_FROZEN"
         self.api.reqMarketDataType(MarketDataTypeEnum.REALTIME)
+        # TODO: how to make sure the change of mkt data type is effective?
+        time.sleep(2)
         for security in self.securities:
             if self.ib_contractdetails[security] is None:
                 try:
@@ -848,13 +855,6 @@ class IbGateway(BaseGateway):
             )
             if self.ib_hist_bars_done[bar_interval][security].wait():
                 print(f"[{reqId}]Subscribed hist bars for {security.code}")
-
-            self.api.cancelHistoricalData(reqId=reqId)
-            self.ib_hist_bars_reqid[bar_interval][security] = None
-            self.ib_hist_bars_num[bar_interval][security] = 0
-            self.ib_bars[bar_interval][security] = self.ib_hist_bars[
-                bar_interval][security][:]
-            print(f"[{reqId}]Cancelled hist bars for {security.code}")
 
             # Request realtime bar data
             self.ib_bars_req_done[bar_interval][security].clear()
@@ -1088,6 +1088,16 @@ class IbGateway(BaseGateway):
                 f"Parameters trading_sessions is mandatory if freq={freq}.")
 
         # return historical bar data
+        reqId = self.ib_hist_bars_reqid[freq][security]
+        if reqId is not None:
+            self.api.cancelHistoricalData(reqId=reqId)
+            # TODO: how to confirm the cancellation is effective?
+            time.sleep(2)
+            self.ib_hist_bars_reqid[freq][security] = None
+            self.ib_hist_bars_num[freq][security] = 0
+            self.ib_hist_bars[freq][security] = []
+            print(f"[{reqId}]Cancelled existing hist bars for {security.code}")
+
         ib_contract = self.get_ib_contract_from_security(security)
         self.ib_hist_bars_done[freq][security].clear()
         reqId = self.req_hist_bars(
@@ -1098,63 +1108,11 @@ class IbGateway(BaseGateway):
             update=False
         )
         if self.ib_hist_bars_done[freq][security].wait():
-            print(f"[{reqId}]Subscribed hist bars for {security.code}")
+            print(f"[{reqId}]Subscribed new hist bars for {security.code}")
 
-        self.api.cancelHistoricalData(reqId=reqId)
-        self.ib_hist_bars_reqid[freq][security] = None
-        self.ib_hist_bars_num[freq][security] = 0
+        # a new request to hist bars will update realtime bars
         self.ib_bars[freq][security] = self.ib_hist_bars[freq][security][:]
-        print(f"[{reqId}]Cancelled hist bars for {security.code}")
-        return self.ib_bars[freq][security]
-
-        # if freq == "1Min":
-        #     return _req_historical_bars_ib_1min(
-        #         security=security,
-        #         periods=periods,
-        #         gateway=self
-        #     )
-        # elif freq == "1Day":
-        #     return _req_historical_bars_ib_1day(
-        #         security=security,
-        #         periods=periods,
-        #         gateway=self
-        #     )
-
-
-# def _req_historical_bars_ib_1min(
-#     security: Security,
-#     periods: int,
-#     gateway: BaseGateway
-# ) -> List[Bar]:
-#     if gateway.ib_bars_num["1min"][security] is None:
-#         ib_contract = gateway.get_ib_contract_from_security(
-#             security)
-#         gateway.req_hist_bars(
-#             ib_contract,
-#             security,
-#             "1min",
-#             periods,
-#             False  # if set True, will block receiving data in reqAccountUpdates
-#         )
-#     return gateway.get_recent_bars(security, "1min")
-#
-#
-# def _req_historical_bars_ib_1day(
-#     security: Security,
-#     periods: int,
-#     gateway: BaseGateway,
-# ) -> List[Bar]:
-#     if gateway.ib_bars_num["1day"][security] is None:
-#         ib_contract = gateway.get_ib_contract_from_security(
-#             security)
-#         gateway.req_hist_bars(
-#             ib_contract,
-#             security,
-#             "1day",
-#             periods,
-#             False
-#         )
-#     return gateway.get_recent_bars(security, "1day")
+        return self.ib_hist_bars[freq][security][:]
 
 
 def get_ib_security_type(security: Security) -> str:
