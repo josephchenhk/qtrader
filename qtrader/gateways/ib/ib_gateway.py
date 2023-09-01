@@ -940,7 +940,7 @@ class IbGateway(BaseGateway):
         min_tick = contract_details.minTick
 
         # Generate Order
-        ib_order = IbOrder(eTradeOnly=None, firmQuoteOnly=None)
+        ib_order = IbOrder()
         ib_order.action = order_direction_qt2ib(order.direction)
         ib_order.orderType = order_type_qt2ib(order.order_type)
         ib_order.totalQuantity = order.quantity
