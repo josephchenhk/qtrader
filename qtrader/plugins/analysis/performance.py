@@ -938,11 +938,12 @@ def plot_signals(
     portfolio_value_ts = [
         sum(spv) for spv in data["strategy_portfolio_value"]]
 
-    portfolio_value = go.Line(
+    portfolio_value = go.Scatter(
         x=datetime_ts,
         y=portfolio_value_ts,
         name=f"Portfoliio Value",
-        marker=dict(color="blue")
+        marker=dict(color="blue"),
+        mode='lines'
     )
 
     candlesticks = {
@@ -1382,8 +1383,10 @@ if __name__ == "__main__":
                 dict(func=go.Bar, style=dict(marker=dict(color="grey")), pos=2),
             ],
             "tsv_m": [
-                dict(func=go.Line, style=dict(marker=dict(color="blue")), pos=2),
-                dict(func=go.Line, style=dict(marker=dict(color="blue")), pos=2),
+                dict(func=go.Scatter, style=dict(marker=dict(color="blue"),
+                                                 mode="lines"), pos=2),
+                dict(func=go.Scatter, style=dict(marker=dict(color="blue"),
+                                                 mode="lines"), pos=2),
             ]
         }
     }
