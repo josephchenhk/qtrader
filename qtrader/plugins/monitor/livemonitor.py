@@ -18,6 +18,7 @@ import os
 from datetime import datetime
 
 import pandas as pd
+import plotly.graph_objects as go
 from dash.dependencies import Input, Output
 import dash
 from pathlib import Path
@@ -66,6 +67,22 @@ def update_graph_live(n, strategy_name):
     home_dir = Path(os.getcwd())
     data_path = home_dir.joinpath(
         f".qtrader_cache/livemonitor/{strategy_name}/{monitor_name}")
+    if not os.path.exists(data_path):
+        # Create a blank figure
+        fig = go.Figure()
+        # Add text annotation to the figure
+        fig.add_annotation(
+            x=0.5,  # X-coordinate of the text (0.5 means centered horizontally)
+            y=0.5,  # Y-coordinate of the text (0.5 means centered vertically)
+            text=f"{strategy_name}/{monitor_name} not exist",  # Text to display
+            showarrow=False,  # Do not display an arrow
+            font=dict(size=24)  # Font size of the text
+        )
+        # Update layout properties if needed (e.g., background color)
+        fig.update_layout(
+            plot_bgcolor='white',  # Set background color to white
+        )
+        return fig
     with open(data_path, "rb") as f:
         data = pd.DataFrame(pickle.load(f))
         fig = plot_signals(
