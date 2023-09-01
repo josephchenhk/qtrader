@@ -855,6 +855,9 @@ class IbGateway(BaseGateway):
             )
             if self.ib_hist_bars_done[bar_interval][security].wait():
                 print(f"[{reqId}]Subscribed hist bars for {security.code}")
+            # a new request to hist bars will update realtime bars
+            self.ib_bars[bar_interval][security] = self.ib_hist_bars[
+                bar_interval][security][:]
 
             # Request realtime bar data
             self.ib_bars_req_done[bar_interval][security].clear()
@@ -937,7 +940,7 @@ class IbGateway(BaseGateway):
         min_tick = contract_details.minTick
 
         # Generate Order
-        ib_order = IbOrder()
+        ib_order = IbOrder(eTradeOnly=None, firmQuoteOnly=None)
         ib_order.action = order_direction_qt2ib(order.direction)
         ib_order.orderType = order_type_qt2ib(order.order_type)
         ib_order.totalQuantity = order.quantity
