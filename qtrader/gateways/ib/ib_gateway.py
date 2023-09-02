@@ -56,6 +56,12 @@ Please install ibapi first:
 3. > unzip twsapi_macunix.1019.01.zip  # unzip the file
 4. cd ~Downloads/IBJts/source/pythonclient
 5. > python setup.py install
+
+TIPS
+---------
+1. make sure tws/gateway version is compatible with python ibapi
+2. make sure contract expiry date is correct (can check in TWS)
+3. clear cache in `.qtrader_cache` if possible
 """
 
 IB = GATEWAYS.get("Ib")
