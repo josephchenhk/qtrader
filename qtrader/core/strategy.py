@@ -50,8 +50,7 @@ class BaseStrategy:
             strategy_version: str,
             engine: Engine,
             strategy_trading_sessions: List[List[datetime]] = None,
-            init_strategy_account_balance: Dict[str, AccountBalance] = None,
-            init_strategy_position: Dict[str, Position] = None,
+            init_strategy_portfolios: Dict[str, List[Portfolio]] = None,
             init_strategy_params: Dict[str, Dict[str, Dict]] = None
     ):
         self.securities = securities
@@ -59,17 +58,20 @@ class BaseStrategy:
         self.strategy_account = strategy_account
         self.strategy_version = strategy_version
         self.strategy_trading_sessions = strategy_trading_sessions
-        if init_strategy_account_balance is None:
-            init_strategy_account_balance = {
-                gw: AccountBalance(cash=0.0) for gw in securities}
-        if init_strategy_position is None:
-            init_strategy_position = {gw: Position() for gw in securities}
+        # portfolios
+        if init_strategy_portfolios is None:
+            init_strategy_portfolios = {}
+            for gateway_name in securities:
+                init_strategy_portfolios[gateway_name] = Portfolio(
+                    account_balance=AccountBalance(cash=0),
+                    position=Position(),
+                    market=engine.gateways[gateway_name]
+                )
+        self.portfolios = init_strategy_portfolios
+        # parameters
         if init_strategy_params is None:
             init_strategy_params = {gw: {} for gw in securities}
-        self._init_strategy_account_balance = init_strategy_account_balance
-        self._init_strategy_position = init_strategy_position
         self._init_strategy_params = init_strategy_params
-
         # Record the action at each time step
         self._actions = {gateway_name: "" for gateway_name in engine.gateways}
         # Record bar data at each time step
@@ -81,22 +83,9 @@ class BaseStrategy:
 
     def _init_strategy(self):
         """Initialize portfolio information for a specific strategy"""
-        init_strategy_account_balance = self._init_strategy_account_balance
-        init_strategy_position = self._init_strategy_position
         init_strategy_params = self._init_strategy_params
-        self.portfolios = {}
         self.params = {}
         for gateway_name in self.securities:
-            gateway = self.engine.gateways[gateway_name]
-            account_balance = init_strategy_account_balance[gateway_name]
-            position = init_strategy_position[gateway_name]
-            portfolio = Portfolio(
-                account_balance=account_balance,
-                position=position,
-                market=gateway
-            )
-            self.portfolios[gateway_name] = portfolio
-
             self.params[gateway_name] = {}
             for sec_code in init_strategy_params[gateway_name]:
                 self.params[gateway_name][sec_code] = {}
@@ -121,20 +110,11 @@ class BaseStrategy:
     def get_datetime(self, gateway_name: str) -> datetime:
         return self.engine.gateways[gateway_name].market_datetime
 
-    def get_portfolio_value(self, gateway_name: str) -> float:
-        return self.engine.portfolios[gateway_name].value
-
     def get_strategy_portfolio_value(self, gateway_name: str) -> float:
         return self.portfolios[gateway_name].value
 
-    def get_account_balance(self, gateway_name: str) -> AccountBalance:
-        return self.engine.portfolios[gateway_name].account_balance
-
     def get_strategy_account_balance(self, gateway_name: str) -> AccountBalance:
         return self.portfolios[gateway_name].account_balance
-
-    def get_position(self, gateway_name: str) -> Position:
-        return self.engine.portfolios[gateway_name].position
 
     def get_strategy_position(self, gateway_name: str) -> Position:
         return self.portfolios[gateway_name].position
