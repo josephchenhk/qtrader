@@ -63,6 +63,7 @@ class BaseGateway(ABC):
         assert gateway_name in GATEWAYS, (
             f"{gateway_name} is NOT in GATEWAYS, please check your config file!"
         )
+        self.gateway_name = gateway_name
         self.broker_account = GATEWAYS[gateway_name]["broker_name"]
         self.broker_account = GATEWAYS[gateway_name]["broker_account"]
         self.orders = BlockingDict()
