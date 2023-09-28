@@ -549,6 +549,10 @@ def plot_pnl(
     dt = np.array(df['datetime'])
     spv = np.array(df["strategy_portfolio_value"])
 
+    if len(spv) <= 1:
+        print('backtest period is NOT long enough to display daily pnl')
+        return
+
     # Maximum Drawdown (Nominal)
     ni = np.argmax(np.maximum.accumulate(spv) - spv)  # end of the period
     nj = np.argmax(spv[:ni]) if ni else 0            # start of period
