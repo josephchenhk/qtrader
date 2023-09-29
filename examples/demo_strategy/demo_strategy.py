@@ -13,15 +13,14 @@ written for another century.
 You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
-
+from datetime import datetime
 from time import sleep
 from typing import Dict, List
 
 import pandas as pd
 from finta import TA
 
-from qtrader.core.balance import AccountBalance
-from qtrader.core.position import Position
+from qtrader.core.portfolio import Portfolio
 from qtrader.core.constants import Direction, Offset, OrderType, TradeMode, OrderStatus
 from qtrader.core.data import Bar
 from qtrader.core.engine import Engine
@@ -36,26 +35,24 @@ class DemoStrategy(BaseStrategy):
                  securities: Dict[str, List[Stock]],
                  strategy_account: str,
                  strategy_version: str,
-                 init_strategy_account_balance: Dict[str, AccountBalance],
-                 init_strategy_position: Dict[str, Position],
                  engine: Engine,
+                 strategy_trading_sessions: List[List[datetime]]=None,
+                 init_strategy_portfolios: Dict[str, List[Portfolio]]=None,
                  **kwargs
                  ):
         super().__init__(
             securities=securities,
             strategy_account=strategy_account,
             strategy_version=strategy_version,
-            init_strategy_account_balance=init_strategy_account_balance,
-            init_strategy_position=init_strategy_position,
             engine=engine,
+            strategy_trading_sessions=strategy_trading_sessions,
+            init_strategy_portfolios=init_strategy_portfolios,
             **kwargs
         )
         # security list
         self.securities = securities
         # execution engine
         self.engine = engine
-        # portfolios
-        self.portfolios = engine.portfolios
         # For simulation/live trading, set the waiting time > 0
         self.sleep_time = 0
         for gateway_name in engine.gateways:
@@ -80,28 +77,18 @@ class DemoStrategy(BaseStrategy):
                 continue
 
             # check balance
-            balance = self.engine.get_balance(gateway_name=gateway_name)
-            self.engine.log.info(f"{balance}")
-            broker_balance = self.engine.get_broker_balance(
-                gateway_name=gateway_name)
-            self.engine.log.info(f"{broker_balance}")
+            account_balance = self.get_strategy_account_balance(gateway_name=gateway_name)
+            self.engine.log.info(f"{account_balance}")
 
             # check position
-            positions = self.engine.get_all_positions(
-                gateway_name=gateway_name)
-            self.engine.log.info(f"{positions}")
-            broker_positions = self.engine.get_all_broker_positions(
-                gateway_name=gateway_name)
-            self.engine.log.info(f"{broker_positions}")
+            position = self.get_strategy_position(gateway_name=gateway_name)
+            self.engine.log.info(f"{position}")
 
             # send orders
             for security in cur_data[gateway_name]:
-
                 if security not in self.securities[gateway_name]:
                     continue
-
                 bar = cur_data[gateway_name][security]
-
                 # Collect bar data (only keep latest 20 records)
                 self.ohlcv[gateway_name][security].append(bar)
                 if len(self.ohlcv[gateway_name][security]) > 20:
@@ -140,10 +127,9 @@ class DemoStrategy(BaseStrategy):
                 elif prev_macd < cur_signal < cur_macd < 0:
                     signal = "BUY"
 
-                long_position = self.engine.get_position(
-                    security=security, direction=Direction.LONG, gateway_name=gateway_name)
-                short_position = self.engine.get_position(
-                    security=security, direction=Direction.SHORT, gateway_name=gateway_name)
+                position = self.get_strategy_position(gateway_name=gateway_name)
+                long_position = position.get_position(security=security, direction=Direction.LONG)
+                short_position = position.get_position(security=security, direction=Direction.SHORT)
 
                 if short_position and signal == "SELL":
                     continue

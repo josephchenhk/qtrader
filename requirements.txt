@@ -61,3 +61,7 @@ XlsxWriter
 func-timeout
 PyYAML
 plotly
+finta
+pyautogui
+dash
+
