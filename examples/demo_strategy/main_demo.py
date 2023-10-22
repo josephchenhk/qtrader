@@ -18,11 +18,20 @@ this file. If not, please write to: josephchenhk@gmail.com
 #
 #                          Demo strategy
 ##########################################################################
+import sys
+
+from qtrader_config import LOCAL_PACKAGE_PATHS
+from qtrader_config import ADD_LOCAL_PACKAGE_PATHS_TO_SYSPATH
+if ADD_LOCAL_PACKAGE_PATHS_TO_SYSPATH:
+    for pth in LOCAL_PACKAGE_PATHS:
+        if pth not in sys.path:
+            sys.path.insert(0, pth)
 
 from datetime import datetime
 
 from qtrader.core.balance import AccountBalance
 from qtrader.core.position import Position
+from qtrader.core.portfolio import Portfolio
 from qtrader.core.constants import TradeMode, Exchange
 from qtrader.core.event_engine import BarEventEngineRecorder, BarEventEngine
 from qtrader.core.security import Futures
@@ -79,24 +88,28 @@ if __name__ == "__main__":
     plugins = engine.get_plugins()
 
     # Initialize strategy
-    strategy_account = "DemoStrategy"
+    strategy_account = "Demo_Strategy"
     strategy_version = "1.0"
     init_position = Position()
     init_capital = 1000000
-    init_account_balance = AccountBalance(cash=init_capital)
+    init_strategy_portfolio = Portfolio(
+        account_balance=AccountBalance(cash=init_capital),
+        position=Position(),
+        market=gateway
+    )
+
     strategy = DemoStrategy(
         securities={gateway_name: stock_list},
         strategy_account=strategy_account,
         strategy_version=strategy_version,
-        init_strategy_account_balance={'Backtest': init_account_balance},
-        init_strategy_position={'Backtest': init_position},
         engine=engine,
         strategy_trading_sessions={
             "FUT.GC": [[datetime(1970, 1, 1, 15, 0, 0),
                         datetime(1970, 1, 1, 23, 0, 0)]],
             "FUT.SI": [[datetime(1970, 1, 1, 15, 0, 0),
                         datetime(1970, 1, 1, 23, 0, 0)]]
-        }
+        },
+        init_strategy_portfolios={'Backtest': init_strategy_portfolio},
     )
     strategy.init_strategy()
 
