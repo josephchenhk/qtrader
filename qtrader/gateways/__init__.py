@@ -14,7 +14,7 @@ written for another century.
 You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
-from pywintypes import com_error
+# from pywintypes import com_error
 from .base_gateway import BaseGateway
 from .backtest import BacktestGateway
 
@@ -28,7 +28,12 @@ try:
 except ImportError as e:
     print(f"Warning: {e.__class__}: {e.msg}")
 
+# try:
+#     from .cqg import CqgGateway
+# except (ImportError, com_error) as e:
+#     print(f"Warning: {e.__class__}: {e}")
+
 try:
     from .cqg import CqgGateway
-except (ImportError, com_error) as e:
+except Exception as e:
     print(f"Warning: {e.__class__}: {e}")
