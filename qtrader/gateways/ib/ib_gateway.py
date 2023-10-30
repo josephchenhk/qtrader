@@ -53,8 +53,8 @@ IMPORTANT
 Please install ibapi first:
 1. Go to https://interactivebrokers.github.io/#
 2. Download twsapi_macunix.1019.01.zip
-3. > unzip twsapi_macunix.1019.01.zip  # unzip the file
-4. cd ~Downloads/IBJts/source/pythonclient
+3. > unzip -o twsapi_macunix.1019.01.zip -d twsapi1019  # unzip the file
+4. cd ~Downloads/twsapi1019/IBJts/source/pythonclient
 5. > python setup.py install
 
 TIPS
@@ -796,6 +796,7 @@ class IbGateway(BaseGateway):
                     self.api.cancelHistoricalData(reqId=reqId)
 
     def subscribe(self):
+        # https://interactivebrokers.github.io/tws-api/market_data_type.html
         # "REALTIME", "FROZEN", "DELAYED", "DELAYED_FROZEN"
         self.api.reqMarketDataType(MarketDataTypeEnum.REALTIME)
         # TODO: how to make sure the change of mkt data type is effective?
