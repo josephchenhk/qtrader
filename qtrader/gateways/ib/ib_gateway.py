@@ -898,6 +898,8 @@ class IbGateway(BaseGateway):
             bar_interval = f"{round(TIME_STEP / 60. / 1000.)}Min"
         num_bars = self.num_of_min_bar
         recent_bars = self.ib_bars[bar_interval][security][-num_bars:]
+        print(f"[!!] len(self.ib_bars[{bar_interval}][{security.code}])=", len(self.ib_bars[bar_interval][security]))
+        print(f"[!!] len(self.ib_bars['5Sec'][{security.code}])=", len(self.ib_bars["5Sec"][security]))
         return recent_bars[-1]
 
     def get_recent_capital_distribution(
