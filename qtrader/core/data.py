@@ -29,6 +29,7 @@ import pandas as pd
 from qtrader.core.constants import Exchange
 from qtrader.core.security import Stock, Security
 from qtrader.core.utility import get_kline_dfield_from_seconds
+from qtrader.core.utility import read_row_from_csv
 from qtrader_config import DATA_PATH, TIME_STEP, BAR_CONVENTION
 
 
@@ -207,7 +208,12 @@ def _get_data(
     full_data = pd.DataFrame()
     for data_file in sorted(data_files_in_range):
         data_path = _get_data_path(security, dfield)
-        data = pd.read_csv(f"{data_path}/{data_file}")
+        if 'open' in read_row_from_csv(f"{data_path}/{data_file}", 1):
+            data = pd.read_csv(f"{data_path}/{data_file}")
+        elif 'open' in read_row_from_csv(f"{data_path}/{data_file}", 2):
+            data = pd.read_csv(f"{data_path}/{data_file}", header=[0,1], index_col=[0])
+            # get only the principal contract
+            data = data.xs('0', level=0, axis=1).reset_index()
         if dtype is None:
             # Identify the time_key/timestamp column
             inspect_time_cols = [
@@ -254,6 +260,30 @@ def _get_data(
     full_data = full_data[(full_data[time_col] >= start_str)
                           & (full_data[time_col] <= end_str)]
     full_data["time_key"] = pd.to_datetime(full_data["time_key"])
+    full_data.reset_index(drop=True, inplace=True)
+
+    # build continuous contracts for futures
+    if 'ticker' in full_data.columns:
+        roll = full_data[(full_data['ticker'] != full_data['ticker'].shift(1)) |
+            ((full_data['ticker'] != full_data['ticker'].shift(-1)))]
+        # the first and last row are not relevant to futures rolling
+        drop_rows = [0, len(full_data)-1]
+        roll = roll.drop(drop_rows)
+        assert roll.shape[0] % 2 == 0, 'roll records should be an even number'
+        # get adjustment factors and corresponding indices
+        adj_factors = []
+        adj_indices = []
+        for i in range(1, len(roll), 2):
+            factor = roll.iloc[i]['close'] / roll.iloc[i - 1]['close']
+            adj_factors.append(factor)
+            adj_indices.append(roll.iloc[[i-1]].index[0])
+        # Adjust historical prices and make continuous data
+        for idx, factor in zip(adj_indices, adj_factors):
+            # print(idx, factor)
+            full_data.loc[:idx, 'close'] *= factor
+            full_data.loc[:idx, 'open'] *= factor
+            full_data.loc[:idx, 'high'] *= factor
+            full_data.loc[:idx, 'low'] *= factor
     return full_data
 
 

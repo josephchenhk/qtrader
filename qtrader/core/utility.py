@@ -14,7 +14,7 @@ written for another century.
 You should have received a copy of the JXW license with
 this file. If not, please write to: josephchenhk@gmail.com
 """
-
+import csv
 from functools import wraps
 from timeit import default_timer as timer
 from datetime import datetime
@@ -253,6 +253,16 @@ def is_trading_time(
                 break
     return _is_trading_time
 
+
+def read_row_from_csv(filename: str, row: int) -> List[str]:
+    """"""
+    with open(filename, 'r') as file:
+        reader = csv.reader(file)
+        n = 0
+        while n < row:
+            data = next(reader)
+            n += 1
+        return data
 
 if __name__ == "__main__":
     blockdict = BlockingDict()
