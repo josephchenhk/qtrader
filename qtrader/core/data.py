@@ -213,7 +213,10 @@ def _get_data(
         elif 'open' in read_row_from_csv(f"{data_path}/{data_file}", 2):
             data = pd.read_csv(f"{data_path}/{data_file}", header=[0,1], index_col=[0])
             # get only the principal contract
-            data = data.xs('0', level=0, axis=1).reset_index()
+            levels = [lvl for lvl in set(data.columns.get_level_values(0)) if lvl!='meta']
+            volumes = {lvl: data.xs(lvl, level=0, axis=1).dropna()['volume'].sum() for lvl in levels}
+            principal_level = max(volumes, key=volumes.get)
+            data = data.xs(principal_level, level=0, axis=1).reset_index()
         if dtype is None:
             # Identify the time_key/timestamp column
             inspect_time_cols = [
@@ -260,6 +263,7 @@ def _get_data(
     full_data = full_data[(full_data[time_col] >= start_str)
                           & (full_data[time_col] <= end_str)]
     full_data["time_key"] = pd.to_datetime(full_data["time_key"])
+    full_data = full_data.dropna()
     full_data.reset_index(drop=True, inplace=True)
 
     # build continuous contracts for futures
