@@ -107,7 +107,7 @@ class BacktestGateway(BaseGateway):
     NAME = "BACKTEST"
 
     # Specified data types
-    DTYPES = None
+    DATA_CONFIG = None
 
     def __init__(
             self,
@@ -115,7 +115,7 @@ class BacktestGateway(BaseGateway):
             gateway_name: str,
             start: datetime,
             end: datetime,
-            dtypes: Dict[str, List[str]] = dict(
+            data_config: Dict[str, List[str]] = dict(
                 kline=["time_key",
                        "open",
                        "high",
@@ -125,15 +125,14 @@ class BacktestGateway(BaseGateway):
             fees: BaseFees = BacktestFees,
             **kwargs
     ):
-        self.set_trade_mode(TradeMode.BACKTEST)
-        self.DTYPES = dtypes
-        assert (set(dtypes.keys()) == set(DATA_PATH.keys())), (
+        self.DATA_CONFIG = data_config
+        assert (set(data_config.keys()) == set(DATA_PATH.keys())), (
             f"In __init__ of {self.__class__.__name__}, "
             "the input param `dtypes` must be consistent with "
             f"config in DATA_PATH({DATA_PATH}).\nAccording to "
             f"DATA_PATH, `dtypes` should include: {','.join(DATA_PATH.keys())},"
             f"however, only the followings were passed in: "
-            f"{','.join(dtypes.keys())}.")
+            f"{','.join(data_config.keys())}.")
         if "trading_sessions" in kwargs:
             super().__init__(
                 securities=securities,
@@ -146,29 +145,7 @@ class BacktestGateway(BaseGateway):
                 gateway_name=gateway_name
             )
         self.fees = fees
-
-        # if DATA_FFILL:
-        #     first_time_key = None
-        #     time_keys = set()
-        #     for security in securities:
-        #         for dfield in DATA_PATH.keys():  # kline | capdist
-        #             # Read data and get its time_keys
-        #             data = _get_data(
-        #                 security=security,
-        #                 start=start,
-        #                 end=end,
-        #                 dfield=dfield,
-        #                 dtype=dtypes[dfield])
-        #             if first_time_key is None:
-        #                 first_time_key = data.iloc[0]["time_key"]
-        #             else:
-        #                 first_time_key = max(
-        #                     first_time_key,
-        #                     data.iloc[0]["time_key"]
-        #                 )
-        #             time_keys.update(data.time_key.to_list())
-        #     time_keys = sorted(time_keys)
-        #     time_keys = [t for t in time_keys if t >= first_time_key]
+        self.set_trade_mode(TradeMode.BACKTEST)
 
         data_iterators = dict()
         prev_cache = dict()
@@ -178,35 +155,34 @@ class BacktestGateway(BaseGateway):
             data_iterators[security] = dict()
             prev_cache[security] = dict()
             next_cache[security] = dict()
-            for dfield in DATA_PATH.keys():  # kline | capdist
+            for dtype in DATA_PATH.keys():  # kline | capdist
+                kw = {}
+                if dtype == 'kline':
+                    interval_val = TIME_STEP // 60000
+                    if interval_val < 60 * 24:
+                        interval = f'{interval_val}min'
+                    else:
+                        interval = f'{interval_val}day'
+                    kw = dict(interval=interval)
                 # data_iterators is a dictionary that stores data iterators
                 data = _get_data(
                     security=security,
                     start=start,
                     end=end,
-                    dfield=dfield,
-                    dtype=dtypes[dfield])
-                # if DATA_FFILL:
-                #     data = data[data.time_key >= first_time_key]
-                #     ffill_data = pd.DataFrame(index=time_keys)
-                #     ffill_data = ffill_data.join(data.set_index('time_key')).sort_index()
-                #     ffill_data = ffill_data.reset_index().rename(columns={"index": "time_key"})
-                #     ffill_data['open'] = ffill_data['open'].ffill()
-                #     ffill_data['high'] = ffill_data['high'].ffill()
-                #     ffill_data['low'] = ffill_data['low'].ffill()
-                #     ffill_data['close'] = ffill_data['close'].ffill()
-                #     ffill_data['volume'] = ffill_data['volume'].fillna(0)
-                #     data = ffill_data
+                    dfield=data_config[dtype],
+                    dtype=dtype,
+                    **kw
+                )
                 data_it = _get_data_iterator(
                     security=security,
                     full_data=data,
-                    class_name=DATA_MODEL[dfield])
-                data_iterators[security][dfield] = data_it
+                    class_name=DATA_MODEL[dtype])
+                data_iterators[security][dtype] = data_it
                 # initialize cache data
-                prev_cache[security][dfield] = None
-                next_cache[security][dfield] = None
+                prev_cache[security][dtype] = None
+                next_cache[security][dtype] = None
                 # Sort the available dates in history
-                if dfield == "kline":
+                if dtype == "kline":
                     trading_days[security] = sorted(
                         set(pd.to_datetime(t).strftime("%Y-%m-%d")
                             for t in data["time_key"].values))
@@ -502,114 +478,29 @@ class BacktestGateway(BaseGateway):
             self,
             security: Security,
             periods: int,
-            freq: str,
+            interval: str,
             cur_datetime: datetime,
-            trading_sessions: List[datetime] = None,
-            mode: str = "direct"
     ) -> List[Bar]:
         """request historical bar data.
-
-        mode:
-            'aggregate': use 1 min bar data to aggregate the different
-                         granularity of bars. If in this mode, 'daily_open_time'
-                         and 'daily_close_time' must also be provided.
-            'direct': (default) directly load the corresponding granularity of
-                      bars from CSV.
         """
-        # Check params
-        if mode not in ("aggregate", "direct"):
+        interval_val = int(interval.replace('min', '').replace('day', ''))
+        df = _get_data(
+            security=security,
+            start=cur_datetime - timedelta(minutes=interval_val * periods * 24),
+            end=cur_datetime,
+            dtype='kline',
+            interval=interval
+        ).iloc[-periods:]
+        if df.shape[0] != periods:
             raise ValueError(
-                f"mode {mode} is invalid; only 'aggregate' or 'direct' are "
-                "allowed.")
-        if (
-            freq == "1Day"
-            and mode == "aggregate"
-            and (trading_sessions is None or len(trading_sessions) == 0)
-        ):
-            raise ValueError(
-                f"Parameters trading_sessions is mandatory if freq={freq} and "
-                f"mode={mode}.")
-
-        # return historical bar data
-        if "Min" in freq:
-            return _req_historical_min_bars(
-                security=security,
-                periods=periods,
-                cur_datetime=cur_datetime,
-                trading_sessions=trading_sessions,
-                mode=mode,
-                interval=freq.lower()
-            )
-        elif freq == "1Day":
-            return _req_historical_day_bars(
-                security=security,
-                periods=periods,
-                cur_datetime=cur_datetime,
-                trading_sessions=trading_sessions,
-                mode=mode,
-                interval=freq.lower()
-            )
-
-        # freq is not valid
-        FREQ_ALLOWED = ("1Day", "1Min", "10Min")
-        raise ValueError(
-            f"Parameter freq={freq} is Not supported. Only {FREQ_ALLOWED} are "
-            "allowed.")
-
-
-def _req_historical_min_bars(
-        security: Security,
-        periods: int,
-        cur_datetime: datetime = None,
-        trading_sessions: List[datetime] = None,
-        mode: str = "direct",
-        interval: str = "1min"
-) -> List[Bar]:
-    """Request historical 1min/10min bars."""
-    # TODO: aggregate mode has not been finished.
-    if mode not in ("direct", ):
-        raise ValueError(f"mode {mode} is invalid; only 'direct' is allowed.")
-    if mode == "aggregate":
-        data_path = _get_data_path(security, "kline", interval="1min")
-    elif mode == "direct":
-        data_path = _get_data_path(security, "kline", interval=interval)
-
-    # Use trading sessions to determine daily open & close time
-    daily_open_time = None
-    daily_close_time = None
-    if (
-        (trading_sessions is not None)
-        and (len(trading_sessions) > 0)
-    ):
-        daily_open_time = trading_sessions[0][0].time()
-        daily_close_time = trading_sessions[-1][1].time()
-
-    interval_value = int(interval.replace("min", ""))
-    hist_csv_files = _load_historical_bars_in_reverse(
-        security, cur_datetime, interval)
-    bars = []
-    for n, hist_csv_file in enumerate(hist_csv_files):
-        df = pd.read_csv(f"{data_path}/{hist_csv_file}")
-        df["time_key"] = pd.to_datetime(df["time_key"])
-        df = df[df.time_key <= cur_datetime] # if n == 0 else df
-        for _, row in df.iloc[::-1].iterrows():
+                f'There is not enough historical data for periods={periods}, only {df.shape[0]} is available.')
+        bars = []
+        for _, row in df.iterrows():
             bar_datetime = row.time_key.to_pydatetime()
-            if (
-                (daily_open_time is not None)
-                and (daily_close_time is not None)
-                and (daily_open_time < daily_close_time)
-                and (bar_datetime.time() < daily_open_time
-                     or bar_datetime.time() > daily_close_time)
-            ):
-                continue
-            elif (
-                (daily_open_time is not None)
-                and (daily_close_time is not None)
-                and (daily_open_time > daily_close_time)
-                and (daily_close_time < bar_datetime.time() < daily_open_time)
-            ):
-                continue
-
+            additional_info = {}
+            for fld in ('num_trds', 'value', 'ticker'):
+                if row.get(fld):
+                    additional_info[fld] = row.get(fld)
             bar = Bar(
                 security=security,
                 datetime=bar_datetime,
@@ -617,200 +508,9 @@ def _req_historical_min_bars(
                 high=row.high,
                 low=row.low,
                 close=row.close,
-                volume=row.volume
-            )
-
-            # fill with previous bar if current bar is not available
-            if len(bars) == 0:
-                cur_dt = datetime(
-                    year=cur_datetime.year,
-                    month=cur_datetime.month,
-                    day=cur_datetime.day,
-                    hour=cur_datetime.hour,
-                    minute=cur_datetime.minute,
-                    second=cur_datetime.second
-                )
-                while cur_dt > bar_datetime:
-                    ffill_bar_datetime = cur_dt
-                    _is_trading_time = is_trading_time(
-                        cur_time=ffill_bar_datetime.time(),
-                        trading_sessions=trading_sessions
-                    )
-                    if _is_trading_time and DATA_FFILL:
-                        ffill_bar = Bar(
-                            security=security,
-                            datetime=ffill_bar_datetime,
-                            open=row.open,
-                            high=row.high,
-                            low=row.low,
-                            close=row.close,
-                            volume=row.volume
-                        )
-                        bars.append(ffill_bar)
-                    cur_dt -= timedelta(minutes=interval_value)
-            else:
-                time_delta = int(
-                    (bars[-1].datetime - bar_datetime).total_seconds() / 60)
-                while time_delta > interval_value:
-                    ffill_bar_datetime = cur_dt
-                    ffill_bar_datetime = (
-                        bars[-1].datetime
-                        - timedelta(minutes=interval_value)
-                    )
-                    _is_trading_time = is_trading_time(
-                        cur_time=ffill_bar_datetime.time(),
-                        trading_sessions=trading_sessions
-                    )
-                    if _is_trading_time and DATA_FFILL:
-                        ffill_bar = Bar(
-                            security=security,
-                            datetime=ffill_bar_datetime,
-                            open=row.open,
-                            high=row.high,
-                            low=row.low,
-                            close=row.close,
-                            volume=row.volume
-                        )
-                        bars.append(ffill_bar)
-                    time_delta -= interval_value
-
-            bars.append(bar)
-            if len(bars) >= periods:
-                return bars[:periods][::-1]
-    raise ValueError(
-        f"There is not sufficient historical 1min data for {security.code}. "
-        f"We want {periods} data points, but only got {len(bars)}.")
-
-
-def _req_historical_day_bars(
-        security: Security,
-        periods: int,
-        cur_datetime: datetime = None,
-        trading_sessions: List[datetime] = None,
-        mode: str = "direct",
-        interval: str = "1day"
-) -> List[Bar]:
-    """Request historical daily bars."""
-    if mode not in ("aggregate", "direct"):
-        raise ValueError(
-            f"mode {mode} is invalid; only 'aggregate' or 'direct' are allowed.")
-    if mode == "aggregate":
-        data_path = _get_data_path(security, "kline", interval="1min")
-    elif mode == "direct":
-        data_path = _get_data_path(security, "kline", interval=interval)
-
-    # Use trading sessions to determine daily open & close time
-    daily_open_time = None
-    daily_close_time = None
-    if (
-        (trading_sessions is not None)
-        and (len(trading_sessions) > 0)
-    ):
-        daily_open_time = trading_sessions[0][0].time()
-        daily_close_time = trading_sessions[-1][1].time()
-
-    if mode == "direct":
-        hist_csv_files = _load_historical_bars_in_reverse(
-            security,
-            cur_datetime,
-            interval=interval)
-        hist_csv_files = sorted(hist_csv_files, reverse=False)
-        hist_data = pd.DataFrame()
-        for n, hist_csv_file in enumerate(hist_csv_files):
-            df = pd.read_csv(f"{data_path}/{hist_csv_file}")
-            df["time_key"] = pd.to_datetime(df["time_key"])
-            hist_data = pd.concat([hist_data, df])
-        hist_data = hist_data[hist_data.time_key < datetime.combine(
-            cur_datetime.date(), Time(0, 0, 0))]
-        assert hist_data.shape[0] >= periods, (
-            f"There is not sufficient historical 1day data for {security.code}."
-            f" We want {periods} data points, but only got "
-            f"{hist_data.shape[0]}.")
-        bars = []
-        for _, row in hist_data.iloc[-periods:].iterrows():
-            bar = Bar(
-                security=security,
-                datetime=row.time_key.to_pydatetime(),
-                open=row.open,
-                high=row.high,
-                low=row.low,
-                close=row.close,
-                volume=row.volume
+                volume=row.volume,
+                **additional_info
             )
             bars.append(bar)
         return bars
 
-    elif mode == "aggregate":
-        assert daily_open_time != daily_close_time, (
-            "open and close time could not be the same!")
-        hist_csv_files = _load_historical_bars_in_reverse(
-            security, cur_datetime)
-        bars = []
-        bar_in_progress = False
-        trading_day = None
-        count = 0
-        for n, hist_csv_file in enumerate(hist_csv_files):
-            df = pd.read_csv(
-                f"{data_path}/{hist_csv_file}")
-            df["time_key"] = pd.to_datetime(df["time_key"])
-            df = df[df.time_key < cur_datetime] if n == 0 else df
-            for _, row in df.iloc[::-1].iterrows():
-                bar_datetime = row.time_key.to_pydatetime()
-                count += 1
-                if count > 60 * 24 * 3:
-                    raise TimeoutError(
-                        "It takes too long to retrieve data, "
-                        f"please check daily_open_time: {daily_open_time}, "
-                        f"and daily_close_time: {daily_close_time}.\n"
-                        "The data fed in should cross these two timestamps.")
-                if not bar_in_progress:
-                    # trading sessions is within the same calendar day
-                    is_bar_end_1 = (
-                        daily_open_time < bar_datetime.time() <= daily_close_time)
-                    # trading sessions cross two calendar days
-                    is_bar_end_2 = (
-                        bar_datetime.time() <= daily_close_time < daily_open_time)
-                    if is_bar_end_1 or is_bar_end_2:
-                        daily_bar_datetime = bar_datetime
-                        daily_close = row.close
-                        daily_high = -float('inf')
-                        daily_low = float('inf')
-                        daily_volume = 0
-                        bar_in_progress = True
-                        trading_day = get_trading_day(
-                            bar_datetime, daily_open_time, daily_close_time)
-                        count = 0
-                elif bar_in_progress:
-                    # trading sessions is within the same calendar day
-                    is_bar_begin_1 = (
-                        bar_datetime.time() <= daily_open_time < daily_close_time
-                        and bar_datetime.date() == trading_day
-                    )
-                    # trading sessions cross two calendar days
-                    is_bar_begin_2 = (daily_close_time < bar_datetime.time(
-                    ) <= daily_open_time and bar_datetime.date() < trading_day)
-                    if is_bar_begin_1 or is_bar_begin_2:
-                        daily_open = row.open
-                        daily_high = max(daily_high, row.high)
-                        daily_low = min(daily_low, row.low)
-                        daily_volume += row.volume
-                        bar_in_progress = False
-                        bar = Bar(
-                            security=security,
-                            datetime=daily_bar_datetime,
-                            open=daily_open,
-                            high=daily_high,
-                            low=daily_low,
-                            close=daily_close,
-                            volume=daily_volume
-                        )
-                        bars.append(bar)
-                        if len(bars) == periods:
-                            return bars[::-1]
-                    else:
-                        daily_high = max(daily_high, row.high)
-                        daily_low = min(daily_low, row.low)
-                        daily_volume += row.volume
-        raise ValueError(
-            f"There is not sufficient historical 1day data for {security.code}."
-            f" We want {periods} data points, but only got {len(bars)}.")

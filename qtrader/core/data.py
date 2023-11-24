@@ -43,6 +43,9 @@ class Bar:
     low: float
     close: float
     volume: float
+    num_trds: int = 0
+    value: float = 0
+    ticker: str = ''
 
 
 @dataclass
@@ -155,9 +158,9 @@ class Quote:
     sec_status: str = "NORMAL"
 
 
-def _get_data_path(security: Security, dfield: str, **kwargs) -> str:
+def _get_data_path(security: Security, dtype: str, **kwargs) -> str:
     """Get the path to corresponding csv files."""
-    if dfield == "kline":
+    if dtype == "kline":
         if "interval" in kwargs:
             interval = kwargs.get("interval")
             if "min" in interval:
@@ -171,15 +174,15 @@ def _get_data_path(security: Security, dfield: str, **kwargs) -> str:
         else:
             interval_in_sec = TIME_STEP // 1000  # TIME_STEP is in millisecond
         kline_name = get_kline_dfield_from_seconds(time_step=interval_in_sec)
-        data_path = f"{DATA_PATH[dfield]}/{kline_name}/{security.code}"
+        data_path = f"{DATA_PATH[dtype]}/{kline_name}/{security.code}"
     else:
-        data_path = f"{DATA_PATH[dfield]}/{security.code}"
+        data_path = f"{DATA_PATH[dtype]}/{security.code}"
     return data_path
 
 
-def _get_data_files(security: Stock, dfield: str, **kwargs) -> List[str]:
+def _get_data_files(security: Security, dtype: str, **kwargs) -> List[str]:
     """Fetch csv files"""
-    data_path = _get_data_path(security, dfield, **kwargs)
+    data_path = _get_data_path(security, dtype, **kwargs)
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Data was NOT found in {data_path}!")
     data_files = [f for f in os.listdir(data_path) if ".csv" in f]
@@ -190,89 +193,113 @@ def _get_data(
         security: Stock,
         start: datetime,
         end: datetime,
-        dfield: str,
-        dtype: List[str] = None,
+        dtype: str,
+        dfield: List[str] = None,
         **kwargs
 ) -> pd.DataFrame:
     """Get historical data"""
-    # Get all csv files of the security given
-    data_files = _get_data_files(security, dfield, **kwargs)
-    # Filter out the data that is within the time range given
-    data_files_in_range = []
-    for data_file in data_files:
-        dt = datetime.strptime(
-            data_file[-14:].replace(".csv", ""), "%Y-%m-%d").date()
-        if start.date() <= dt <= end.date():
-            data_files_in_range.append(data_file)
-    # Aggregate the data to a dataframe
-    full_data = pd.DataFrame()
-    for data_file in sorted(data_files_in_range):
-        data_path = _get_data_path(security, dfield)
-        if 'open' in read_row_from_csv(f"{data_path}/{data_file}", 1):
-            data = pd.read_csv(f"{data_path}/{data_file}")
-        elif 'open' in read_row_from_csv(f"{data_path}/{data_file}", 2):
-            data = pd.read_csv(f"{data_path}/{data_file}", header=[0,1], index_col=[0])
+    time_col = 'time_key'
+    if kwargs.get('interval') and 'min' in kwargs.get('interval'):
+        # Get all csv files of the security given
+        data_files = _get_data_files(security, dtype, **kwargs)
+        # Filter out the data that is within the time range given
+        data_files_in_range = []
+        for data_file in data_files:
+            dt = datetime.strptime(
+                data_file[-14:].replace(".csv", ""), "%Y-%m-%d").date()
+            if start.date() <= dt <= end.date():
+                data_files_in_range.append(data_file)
+        # Aggregate the data to a dataframe
+        full_data = pd.DataFrame()
+        for data_file in sorted(data_files_in_range):
+            data_path = _get_data_path(security, dtype)
+            if 'open' in read_row_from_csv(f"{data_path}/{data_file}", 1):
+                data = pd.read_csv(f"{data_path}/{data_file}")
+            elif 'open' in read_row_from_csv(f"{data_path}/{data_file}", 2):
+                data = pd.read_csv(f"{data_path}/{data_file}", header=[0,1], index_col=[0])
+                # get only the principal contract
+                levels = [lvl for lvl in set(data.columns.get_level_values(0)) if lvl!='meta']
+                volumes = {lvl: data.xs(lvl, level=0, axis=1).dropna()['volume'].sum() for lvl in levels}
+                principal_level = max(volumes, key=volumes.get)
+                data = data.xs(principal_level, level=0, axis=1).reset_index()
+            # Confirm the time column could be parsed into datetime
+            try:
+                datetime.strptime(data.iloc[0][time_col], "%Y-%m-%d %H:%M:%S")
+            except BaseException:
+                raise ValueError(
+                    f"{time_col} data {data.iloc[0][time_col]} can not convert to datetime")
+            full_data = pd.concat([full_data, data])
+        if full_data.empty:
+            raise ValueError(
+                f"There is no historical data for {security.code} within time range"
+                f": [{start} - {end}]!")
+        full_data = full_data.sort_values(by=[time_col])
+        if BAR_CONVENTION.get(security.code) == 'start':
+            start -= timedelta(minutes=int(TIME_STEP/60/1000))
+        start_str = start.strftime("%Y-%m-%d %H:%M:%S")
+        end_str = end.strftime("%Y-%m-%d %H:%M:%S")
+        full_data = full_data[(full_data[time_col] >= start_str)
+                              & (full_data[time_col] <= end_str)]
+        full_data["time_key"] = pd.to_datetime(full_data["time_key"])
+        full_data = full_data.dropna()
+        full_data.reset_index(drop=True, inplace=True)
+    elif kwargs.get('interval') == '1day':
+        data_path = _get_data_path(security, dtype, interval='1day')
+        if 'open' in read_row_from_csv(f"{data_path}/ohlcv.csv", 1):
+            data = pd.read_csv(f"{data_path}/ohlcv.csv")
+        elif 'open' in read_row_from_csv(f"{data_path}/ohlcv.csv", 2):
+            data = pd.read_csv(f"{data_path}/ohlcv.csv", header=[0, 1], index_col=[0])
             # get only the principal contract
-            levels = [lvl for lvl in set(data.columns.get_level_values(0)) if lvl!='meta']
+            levels = [lvl for lvl in set(data.columns.get_level_values(0)) if lvl != 'meta']
             volumes = {lvl: data.xs(lvl, level=0, axis=1).dropna()['volume'].sum() for lvl in levels}
             principal_level = max(volumes, key=volumes.get)
             data = data.xs(principal_level, level=0, axis=1).reset_index()
-        if dtype is None:
-            # Identify the time_key/timestamp column
-            inspect_time_cols = [
-                c for c in data.columns if "time" in c or "Time" in c]
-            assert len(inspect_time_cols) > 0, (
-                "Data must contains at least one `*time*` column. Invalid "
-                f"data: {DATA_PATH[dfield]}/{security.code}/{data_file}"
-            )
-            if "update_time" in inspect_time_cols:
-                time_col = "update_time"
-            else:
-                time_col = inspect_time_cols[0]
-        else:
-            assert sum([1 for d in dtype if "time" in d or "Time" in d]) > 0, (
-                "Input params `dtype` must contains at least one `*time*` "
-                f"column. Invalid data: {DATA_PATH[dfield]}/{security.code}"
-                f"/{data_file}"
-            )
-            assert set(dtype).issubset(set(data.columns)), (
-                f"Input params `dtype` must be a subset of the data columns in "
-                f"{DATA_PATH[dfield]}/{security.code}/{data_file}"
-            )
-            time_col = dtype[0]  # The first element must be time
-            data = data[dtype]
-
-        # Confirm the time column could be parsed into datetime
-        try:
-            datetime.strptime(data.iloc[0][time_col], "%Y-%m-%d %H:%M:%S")
-        except BaseException:
-            raise ValueError(
-                f"{time_col} data {data.iloc[0][time_col]} can not convert to "
-                "datetime")
-        # full_data = full_data.append(data, ignore_index=True)
-        full_data = pd.concat([full_data, data])
-    if full_data.empty:
-        raise ValueError(
-            f"There is no historical data for {security.code} within time range"
-            f": [{start} - {end}]!")
-    full_data = full_data.sort_values(by=[time_col])
-    if BAR_CONVENTION.get(security.code) == 'start':
-        start -= timedelta(minutes=int(TIME_STEP/60/1000))
-    start_str = start.strftime("%Y-%m-%d %H:%M:%S")
-    end_str = end.strftime("%Y-%m-%d %H:%M:%S")
-    full_data = full_data[(full_data[time_col] >= start_str)
-                          & (full_data[time_col] <= end_str)]
-    full_data["time_key"] = pd.to_datetime(full_data["time_key"])
-    full_data = full_data.dropna()
-    full_data.reset_index(drop=True, inplace=True)
+        full_data = data
+        full_data['time_key'] = pd.to_datetime(data['time_key'])
 
     # build continuous contracts for futures
+    #
+    # | idx |     full_data   |  full_data.shift(1)  | full_data.shift(-1) |  switch1  |  switch2  |
+    # |-----|-----------------|----------------------|---------------------|-----------|-----------|
+    # |  0  |       1         |        NaN           |         1           |     Y     |           |
+    # |  1  |       1         |         1            |         2           |           |     Y     |
+    # |  2  |       2         |         1            |         2           |     Y     |           |
+    # |  3  |       2         |         2            |         2           |           |           |
+    # |  4  |       2         |         2            |         3           |           |     Y     |
+    # |  5  |       3         |         2            |         4           |     Y     |     Y     |
+    # |  6  |       4         |         3            |        NaN          |     Y     |     Y     |
+    # |-----|-----------------|----------------------|---------------------|-----------|-----------|
+    #
+    # we need to find even number of rows, where for each consecutive two rows, the second row with `switch1=Y`, and
+    # first row with `switch2=Y`. In the above example, this means we want to get the following rows (the `roll`):
+    #
+    # | idx |     full_data   |  full_data.shift(1)  | full_data.shift(-1) |  switch1  |  switch2  |
+    # |-----|-----------------|----------------------|---------------------|-----------|-----------|
+    # |  1  |       1         |         1            |         2           |           |     Y     |
+    # |  2  |       2         |         1            |         2           |     Y     |           |
+    # |-----|-----------------|----------------------|---------------------|-----------|-----------|
+    # |  4  |       2         |         2            |         3           |           |     Y     |
+    # |  5  |       3         |         2            |         4           |     Y     |           |
+    # |-----|-----------------|----------------------|---------------------|-----------|-----------|
+    # |  5  |       3         |         2            |         4           |           |     Y     |
+    # |  6  |       4         |         3            |        NaN          |     Y     |           |
+    # |-----|-----------------|----------------------|---------------------|-----------|-----------|
+    #
+    # where row 5 has been used twice.
+
     if 'ticker' in full_data.columns:
-        roll = full_data[(full_data['ticker'] != full_data['ticker'].shift(1)) |
-            ((full_data['ticker'] != full_data['ticker'].shift(-1)))]
-        # the first and last row are not relevant to futures rolling
-        drop_rows = [0, len(full_data)-1]
-        roll = roll.drop(drop_rows)
+        switch1 = (full_data['ticker'] != full_data['ticker'].shift(1)).astype(int)
+        switch2 = (full_data['ticker'] != full_data['ticker'].shift(-1)).astype(int)
+        if switch1[switch1>0].empty:
+            roll = pd.DataFrame()
+        else:
+            switch_rows = []
+            for i in switch1[switch1>0].index:
+                if i == 0:
+                    continue
+                if switch2.loc[i-1] == 1:
+                    switch_rows.extend([i-1, i])
+            roll = full_data.loc[switch_rows]
         assert roll.shape[0] % 2 == 0, 'roll records should be an even number'
         # get adjustment factors and corresponding indices
         adj_factors = []
