@@ -28,10 +28,14 @@ class Security:
     lot_size: int = None
     exchange: Exchange = None
     expiry_date: str = None
+    quote_currency: str = ''
 
     def __eq__(self, other):
-        return (self.code == other.code) and (
-            self.security_name == other.security_name)
+        return (
+            self.code == other.code
+            and self.security_name == other.security_name
+            and self.exchange.value == other.exchange.value
+        )
 
     def __hash__(self):
         return hash(f"{self.security_name}|{self.code}|{self.exchange.value}")

@@ -78,6 +78,7 @@ class Exchange(Enum):
     SMART = "SMART"         # SMART in IB
     SGX = "SGX"             # Singapore Exchange (https://www.sgx.com/)
     ICE = "ICE"             # Products: QO (Brent Oil)
+    BGN = "BGN"             # Bloomberg price source BGN
 
 
 class Cash(Enum):

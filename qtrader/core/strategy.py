@@ -51,13 +51,15 @@ class BaseStrategy:
             engine: Engine,
             strategy_trading_sessions: List[List[datetime]] = None,
             init_strategy_portfolios: Dict[str, List[Portfolio]] = None,
-            init_strategy_params: Dict[str, Dict[str, Dict]] = None
+            init_strategy_params: Dict[str, Dict[str, Dict]] = None,
+            reporting_currency: str = ''
     ):
         self.securities = securities
         self.engine = engine
         self.strategy_account = strategy_account
         self.strategy_version = strategy_version
         self.strategy_trading_sessions = strategy_trading_sessions
+        self.reporting_currency = reporting_currency
         # portfolios
         if init_strategy_portfolios is None:
             init_strategy_portfolios = {}
@@ -109,14 +111,26 @@ class BaseStrategy:
 
     def get_datetime(self, gateway_name: str) -> datetime:
         return self.engine.gateways[gateway_name].market_datetime
+    @property
+    def strategy_portfolio_value(self) -> float:
+        """Convert gateway portfolio value to strategy reporting currency, and aggregate the portfolio value"""
+        total_pv = 0
+        for gw in self.engine.gateways:
+            gw_pv = self.portfolios[gw].value  # self.get_strategy_portfolio_value(gw)
+            fx_rate = self.engine.gateways[gw].get_exchange_rate(
+                base=self.reporting_currency,
+                quote=self.portfolios[gw].reporting_currency
+            )
+            total_pv += gw_pv / fx_rate
+        return total_pv
 
-    def get_strategy_portfolio_value(self, gateway_name: str) -> float:
+    def get_portfolio_value(self, gateway_name: str) -> float:
         return self.portfolios[gateway_name].value
 
-    def get_strategy_account_balance(self, gateway_name: str) -> AccountBalance:
+    def get_account_balance(self, gateway_name: str) -> AccountBalance:
         return self.portfolios[gateway_name].account_balance
 
-    def get_strategy_position(self, gateway_name: str) -> Position:
+    def get_position(self, gateway_name: str) -> Position:
         return self.portfolios[gateway_name].position
 
     def get_action(self, gateway_name: str) -> str:

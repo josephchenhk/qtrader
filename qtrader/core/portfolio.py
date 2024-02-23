@@ -35,10 +35,13 @@ class Portfolio:
             self,
             account_balance: AccountBalance,
             position: Position,
-            market: BaseGateway):
+            market: BaseGateway,
+            reporting_currency: str = ''
+    ):
         self.account_balance = account_balance
         self.position = position
         self.market = market
+        self.reporting_currency = reporting_currency
 
     def update(self, deal: Deal):
         with lock:
@@ -49,11 +52,15 @@ class Portfolio:
             direction = deal.direction
             offset = deal.offset
             filled_time = deal.updated_time
-            fee = self.market.fees(deal).total_fees
+            fx_rate = self.market.get_exchange_rate(
+                base=self.reporting_currency,
+                quote=security.quote_currency
+            )
+            fee = self.market.fees(deal).total_fees / fx_rate
             # update balance
             self.account_balance.cash -= fee
             if direction == Direction.LONG:
-                self.account_balance.cash -= price * quantity * lot_size
+                self.account_balance.cash -= price * quantity * lot_size / fx_rate
                 if offset == Offset.CLOSE:  # pay interest when closing short
                     short_position = self.position.holdings[security][Direction.SHORT]
                     short_interest = (
@@ -62,9 +69,9 @@ class Portfolio:
                         * (filled_time - short_position.update_time).days / 365
                         * self.market.SHORT_INTEREST_RATE
                     )
-                    self.account_balance.cash -= short_interest
+                    self.account_balance.cash -= short_interest / fx_rate
             elif direction == Direction.SHORT:
-                self.account_balance.cash += price * quantity * lot_size
+                self.account_balance.cash += price * quantity * lot_size / fx_rate
             # update position
             position_data = PositionData(
                 security=security,
@@ -83,6 +90,10 @@ class Portfolio:
         with lock:
             v = self.account_balance.cash
             for security in self.position.holdings:
+                fx_rate = self.market.get_exchange_rate(
+                    base=self.reporting_currency,
+                    quote=security.quote_currency
+                )
                 recent_data = self.market.get_recent_data(
                     security=security,
                     cur_datetime=self.market.market_datetime,
@@ -103,7 +114,7 @@ class Portfolio:
                 for direction in self.position.holdings[security]:
                     position_data = self.position.holdings[security][direction]
                     if direction == Direction.LONG:
-                        v += cur_price * position_data.quantity * security.lot_size
+                        v += cur_price * position_data.quantity * security.lot_size / fx_rate
                     elif direction == Direction.SHORT:
-                        v -= cur_price * position_data.quantity * security.lot_size
+                        v -= cur_price * position_data.quantity * security.lot_size / fx_rate
             return v

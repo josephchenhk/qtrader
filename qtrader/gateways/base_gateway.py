@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import time as Time
 from abc import ABC
 from typing import List, Dict
+import warnings
 
 import yaml
 
@@ -79,6 +80,8 @@ class BaseGateway(ABC):
                 "trading_sessions should be a dict: Dict[str, List].")
             self.trading_sessions = trading_sessions
         else:
+            warnings.warn('This is deprecated, `trading_sessions` is mandatory in future verions.',
+                          DeprecationWarning, stacklevel=2)
             gateway_path = os.path.dirname(os.path.realpath(__file__))
             if "instrument_cfg.yaml" not in os.listdir(Path(gateway_path)):
                 raise ValueError(
@@ -98,15 +101,47 @@ class BaseGateway(ABC):
                     )
                     self.trading_sessions[security.code] = instrument_cfg[
                         security.code]["sessions"]
+        if 'currency_tickers' in kwargs:
+            self.currencies = kwargs.get('currency_tickers')
+        if 'trade_mode' in kwargs:
+            self.trade_mode = kwargs.get('trade_mode')
 
     def close(self):
-        """In backtest, no need to do anything"""
+        """In backtest, no need to do anything."""
         raise NotImplementedError("[close] is not implemented yet.")
 
     @property
     def market_datetime(self):
-        """Current Market time"""
+        """Current Market time."""
         return self._market_datetime
+
+    def get_exchange_rate(self, base: str, quote: str) -> float:
+        """Exchange rate as of current market time."""
+        if base == quote:
+            return 1.0
+        if not getattr(self, 'currencies', False):
+            raise NotImplementedError("[get_exchange_rate] `currency_tickers` has not yet been passed in to "
+                                      f"{self.__class__} when initialising it.")
+        for currency in self.currencies:
+            asset_type, exchange, curncy = currency.code.split('.')
+            if curncy not in (f'{base}{quote}', f'{quote}{base}'):
+                continue
+            if curncy == f'{base}{quote}':
+                curncy_bar = self.get_recent_data(
+                    security=currency,
+                    cur_datetime=self.market_datetime
+                )
+                if curncy_bar:
+                    return curncy_bar.close
+            elif curncy == f'{quote}{base}':
+                curncy_bar = self.get_recent_data(
+                    security=currency,
+                    cur_datetime=self.market_datetime
+                )
+                if curncy_bar:
+                    return 1. / curncy_bar.close
+        raise NotImplementedError(f"[get_exchange_rate] Either `{base}{quote}` or `{quote}{base}` shoule be included "
+                                  f"in `currency_tickers` when initialising {self.__class__}.")
 
     def is_security_trading_time(
             self,

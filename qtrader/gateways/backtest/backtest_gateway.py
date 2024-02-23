@@ -133,17 +133,22 @@ class BacktestGateway(BaseGateway):
             f"DATA_PATH, `dtypes` should include: {','.join(DATA_PATH.keys())},"
             f"however, only the followings were passed in: "
             f"{','.join(data_config.keys())}.")
-        if "trading_sessions" in kwargs:
-            super().__init__(
-                securities=securities,
-                gateway_name=gateway_name,
-                trading_sessions=kwargs.get("trading_sessions")
-            )
-        else:
-            super().__init__(
-                securities=securities,
-                gateway_name=gateway_name
-            )
+        # if "trading_sessions" in kwargs:
+        #     super().__init__(
+        #         securities=securities,
+        #         gateway_name=gateway_name,
+        #         trading_sessions=kwargs.get("trading_sessions")
+        #     )
+        # else:
+        #     super().__init__(
+        #         securities=securities,
+        #         gateway_name=gateway_name
+        #     )
+        super().__init__(
+            securities=securities,
+            gateway_name=gateway_name,
+            **kwargs
+        )
         self.fees = fees
         self.set_trade_mode(TradeMode.BACKTEST)
 
@@ -151,7 +156,12 @@ class BacktestGateway(BaseGateway):
         prev_cache = dict()
         next_cache = dict()
         trading_days = dict()
-        for security in securities:
+        # all securities include trading securities, and currencies
+        all_securities = securities[:]
+        if kwargs.get("currency_tickers"):
+            all_securities += kwargs.get("currency_tickers")
+        all_securities = list(set(all_securities))
+        for security in all_securities:
             data_iterators[security] = dict()
             prev_cache[security] = dict()
             next_cache[security] = dict()
@@ -298,7 +308,7 @@ class BacktestGateway(BaseGateway):
 
     def get_recent_data(
             self,
-            security: Stock,
+            security: Security,
             cur_datetime: datetime,
             **kwargs
     ) -> Dict or Bar or CapitalDistribution:

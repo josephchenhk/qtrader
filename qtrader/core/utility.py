@@ -154,6 +154,8 @@ def try_parsing_datetime(
         "%Y-%m-%d %H:%M:%S.%f",
         "%Y-%m-%d %H:%M:%S",
         "%Y%m%d  %H:%M:%S",
+        "%m/%d/%Y  %H:%M:%S",
+        "%m/%d/%Y  %H:%M",
         "%Y%m%d  %H:%M:%S Asia/Hong_Kong",
         "%Y%m%d  %H:%M:%S Asia/Shanghai",
         "%Y%m%d  %H:%M:%S US/Eastern",

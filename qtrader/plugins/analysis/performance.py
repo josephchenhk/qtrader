@@ -526,8 +526,8 @@ def plot_pnl(
     df = pd.read_csv(result_path)
     df["datetime"] = df["datetime"].apply(lambda dt: max(
         try_parsing_datetime(x) for x in ast.literal_eval(dt)))
-    df["strategy_portfolio_value"] = df["strategy_portfolio_value"].apply(
-        lambda pv: sum(ast.literal_eval(pv)))
+    # df["portfolio_value"] = df["portfolio_value"].apply(
+    #     lambda pv: sum(ast.literal_eval(pv)))
 
     if start is None:
         start = df.iloc[0]["datetime"].to_pydatetime()

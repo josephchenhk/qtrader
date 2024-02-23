@@ -46,6 +46,7 @@ class Bar:
     num_trds: int = 0
     value: float = 0
     ticker: str = ''
+    trading_date: str = ''
 
 
 @dataclass
@@ -222,12 +223,13 @@ def _get_data(
                 volumes = {lvl: data.xs(lvl, level=0, axis=1).dropna()['volume'].sum() for lvl in levels}
                 principal_level = max(volumes, key=volumes.get)
                 data = data.xs(principal_level, level=0, axis=1).reset_index()
-            # Confirm the time column could be parsed into datetime
-            try:
-                datetime.strptime(data.iloc[0][time_col], "%Y-%m-%d %H:%M:%S")
-            except BaseException:
-                raise ValueError(
-                    f"{time_col} data {data.iloc[0][time_col]} can not convert to datetime")
+            # # Confirm the time column could be parsed into datetime
+            # try:
+            #     datetime.strptime(data.iloc[0][time_col], "%Y-%m-%d %H:%M:%S")
+            #
+            # except BaseException:
+            #     raise ValueError(
+            #         f"{time_col} data {data.iloc[0][time_col]} can not convert to datetime")
             full_data = pd.concat([full_data, data])
         if full_data.empty:
             raise ValueError(
