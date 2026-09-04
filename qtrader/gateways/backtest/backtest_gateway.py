@@ -503,7 +503,7 @@ class BacktestGateway(BaseGateway):
         ).iloc[-periods:]
         if df.shape[0] != periods:
             raise ValueError(
-                f'There is not enough historical data for periods={periods}, only {df.shape[0]} is available.')
+                f'There is not enough historical data for periods={periods}, only {df.shape[0]} rows are available.')
         bars = []
         for _, row in df.iterrows():
             bar_datetime = row.time_key.to_pydatetime()
