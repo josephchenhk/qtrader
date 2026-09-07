@@ -8,7 +8,10 @@
     <img src ="https://img.shields.io/badge/license-JXW-orange"/>
 </p>
 
-**Latest update on 2022-09-07**
+**Latest update on 2026-09-07**
+
+`qtrader` has been fully upgraded to Systematic Investment Research Intelligence (Atabet Quant Intelligence), please refer to `www.atabet.com` for more information.
+
 
 ## Key modifications
 - 2022-09-07: Moved `qtrader.config` to `qtrader_config`
